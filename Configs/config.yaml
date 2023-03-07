@@ -1,0 +1,6 @@
+{
+  "DATA_PATH" : "./datasets",
+  "RESULTS_PATH" : "./Results",
+  "SPLITS_PATH" : "./datasets/splits",
+  "use_wandb_tracking" : True
+}

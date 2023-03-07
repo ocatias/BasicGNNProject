@@ -1,0 +1,27 @@
+program: Exp/run_model.py
+command:
+- ${env}
+- /home/fjogl/miniconda3/envs/GNNs/bin/python
+- ${program}
+- ${args}
+metric:
+  name: Final/Val/rocauc (ogb)
+  goal: maximize
+method: "bayes"
+parameters:
+  model:
+    values: ["GIN", "GCN"]
+  dataset:
+    value: ogbg-molhiv
+  epochs:
+    value: 2
+  batch_size:
+    values: [128, 64, 32]
+  emb_dim:
+    values: [32, 64, 128, 300, 512, 1024]
+  drop_out:
+    values: [0, 0.5]
+  num_layer:
+    values: [2,3,4,5]
+  lr:
+    values: [0.01, 0.001, 0.0001, 0.0005, 0.00001]
