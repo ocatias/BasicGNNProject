@@ -74,7 +74,12 @@ This command will tell you the command needed to join agents to the sweep. You c
 - `CSL`: please use cross validation for this dataset
 - OGB datasets: `ogbg-molhiv`, `ogbg-moltox21`, `ogbg-molesol`, `ogbg-molbace`, `ogbg-molclintox`, `ogbg-molbbbp`, `ogbg-molsider`, `ogbg-moltoxcast`, `ogbg-mollipo`
 
+## Testing
 
+The integration tests can be executed with
+```
+python -m unittest
+```
 
 ## Citations
 

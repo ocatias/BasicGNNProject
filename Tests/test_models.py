@@ -14,9 +14,9 @@ use_tracking = False
 
 class ModelTrainingTest(unittest.TestCase):
     def test_model_training(self):
-    """
-    Trains every model on every dataset for 2 epochs.
-    """
+        """
+        Trains every model on every dataset for 2 epochs.
+        """
         for model in models:
             for dataset in datasets:
                 with self.subTest(msg=f"Testing {model} on {dataset}"):
@@ -29,9 +29,9 @@ class ModelTrainingTest(unittest.TestCase):
                     
 class DropFeatureTest(unittest.TestCase):
     def test_dropping_features(self):
-    """
-    Drops features from all datasets
-    """
+        """
+        Drops features from all datasets
+        """
         for dataset in datasets:
             with self.subTest(msg=f"Testing dropping features on {dataset}"):
                 args = { 
@@ -41,9 +41,9 @@ class DropFeatureTest(unittest.TestCase):
                 load_dataset(parse_args(args), config)
                 
     def test_training_on_dropped_feats(self):
-    """
-    Trains every model on 3 datasets with dropped features 
-    """
+        """
+        Trains every model on 3 datasets with dropped features 
+        """
         for model in models:
             for dataset in smaller_number_of_datasets:
                 with self.subTest(msg=f"Testing {model} on {dataset} with dropped features"):
