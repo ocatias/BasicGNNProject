@@ -4,7 +4,7 @@ from Exp.run_model import run as run_model
 from Exp.parser import parse_args
 from Exp.preparation import load_dataset
 from Misc.config import config
-from Misc.clean_datasets_dir import main as clean_datasets_dir
+from Scripts.clean_datasets_dir import main as clean_datasets_dir
 
 models = ["GIN", "GCN", "MLP"]
 datasets = ["CSL", "ZINC", "ogbg-molhiv", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molclintox", "ogbg-molbbbp", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-mollipo"]
