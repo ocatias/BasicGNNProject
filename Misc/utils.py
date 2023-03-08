@@ -18,3 +18,12 @@ class dotdict(dict):
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
+
+def transform_dict_to_args_list(dictionary):
+    """
+    Transform dict to list of args
+    """
+    list_args = []
+    for key,value in dictionary.items():
+        list_args += [key, str(value)]
+    return list_args

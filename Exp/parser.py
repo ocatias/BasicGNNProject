@@ -8,6 +8,7 @@ import sys
 from copy import deepcopy
 
 from Misc.config import config
+from Misc.utils import transform_dict_to_args_list
 
 def parse_args(passed_args=None):
     """
@@ -87,16 +88,10 @@ def parse_args(passed_args=None):
                     
 
     # Load partial args instead of command line args (if they are given)
-    if passed_args is not None:
-        # Transform dict to list of args
-        list_args = []
-        for key,value in passed_args.items():
-            # The case with "" happens if we want to pass an argument that has no parameter
-            list_args += [key, str(value)]
-
-        args = parser.parse_args(list_args)
-    else:
+    if passed_args is None:
         args = parser.parse_args()
+    else:
+        args = parser.parse_args(transform_dict_to_args_list(passed_args))        
 
     args.__dict__["use_tracking"] = args.tracking == 1
     args.__dict__["use_virtual_node"] = args.virtual_node == 1
