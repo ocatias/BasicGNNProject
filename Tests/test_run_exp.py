@@ -11,10 +11,16 @@ import glob
 from Misc.config import config
 from Exp.run_experiment import main as run_experiment
 
-
-    
-
 class RunExpTest(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(RunExpTest, self).__init__(*args, **kwargs)
+        # Remove results directories created by previously running this test
+        for dir_name in ["ogbg-molesol_run_exp_test_config.yaml", "CSL_run_exp_test_config.yaml"]:
+            dir_path = os.path.join(config.RESULTS_PATH, dir_name)
+            
+            if os.path.isdir(dir_path):
+                shutil.rmtree(dir_path)
+        
     def check_if_error_files_exist(self, path):
         """
         Ensure the experiment has not thrown any error
@@ -51,12 +57,5 @@ class RunExpTest(unittest.TestCase):
         self.check_if_error_files_exist(os.path.join(config.RESULTS_PATH, "CSL_run_exp_test_config.yaml"))
 
 if __name__ == '__main__':
-    # Remove results directories created by previously running this test
-    for dir_name in ["ogbg-molesol_run_exp_test_config.yaml", "CSL_run_exp_test_config.yaml"]:
-        dir_path = os.path.join(config.RESULTS_PATH, dir_name)
-        
-        if os.path.isdir(dir_path):
-            shutil.rmtree(dir_path)
-
     # Run tests
     unittest.main()

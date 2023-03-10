@@ -28,6 +28,11 @@ class ModelTrainingTest(unittest.TestCase):
                     })
                     
 class DropFeatureTest(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(DropFeatureTest, self).__init__(*args, **kwargs)
+        # Remove processed datasets to allows us to test generating them
+        clean_datasets_dir()  
+        
     def test_dropping_features(self):
         """
         Drops features from all datasets
@@ -57,8 +62,5 @@ class DropFeatureTest(unittest.TestCase):
                     run_model(passed_args = args)
     
 if __name__ == '__main__':
-    # Remove processed datasets to allows us to test generating them
-    clean_datasets_dir()
-    
     # Run tests
     unittest.main()
