@@ -11,16 +11,18 @@ import glob
 from Misc.config import config
 from Exp.run_experiment import main as run_experiment
 
-def check_if_error_files_exist(path):
-    """
-    Ensure the experiment has not thrown any error
-    """
-    error_files = glob.glob(os.path.join(path, "**", "error_*.json"))
-    print(error_files)
-    assert len(error_files) == 0
+
     
 
 class RunExpTest(unittest.TestCase):
+    def check_if_error_files_exist(self, path):
+        """
+        Ensure the experiment has not thrown any error
+        """
+        error_files = glob.glob(os.path.join(path, "**", "error_*.json"))
+        print(error_files)
+        self.assertEqual(len(error_files), 0)
+    
     def test_run_exp_train_val_test(self):
         """
         run_experiment on a dataset with a train, val, test split
@@ -32,7 +34,7 @@ class RunExpTest(unittest.TestCase):
             "--candidates": "2",
             "--repeats": "2"
         })
-        check_if_error_files_exist(os.path.join(config.RESULTS_PATH, "ogbg-molesol_run_exp_test_config.yaml"))
+        self.check_if_error_files_exist(os.path.join(config.RESULTS_PATH, "ogbg-molesol_run_exp_test_config.yaml"))
         
     def test_run_exp_cross_val(self):
         """
@@ -46,11 +48,10 @@ class RunExpTest(unittest.TestCase):
             "--repeats": "2",
             "--folds": "5"
         })
-        check_if_error_files_exist(os.path.join(config.RESULTS_PATH, "CSL_run_exp_test_config.yaml"))
+        self.check_if_error_files_exist(os.path.join(config.RESULTS_PATH, "CSL_run_exp_test_config.yaml"))
 
 if __name__ == '__main__':
-    # Remove processed results folder from previously running this test
-    
+    # Remove results directories created by previously running this test
     for dir_name in ["ogbg-molesol_run_exp_test_config.yaml", "CSL_run_exp_test_config.yaml"]:
         dir_path = os.path.join(config.RESULTS_PATH, dir_name)
         

@@ -3,5 +3,6 @@
   "RESULTS_PATH" : "./Results",
   "SPLITS_PATH" : "./datasets/splits",
   "TESTS_PATH" : "./Tests",
-  "use_wandb_tracking" : True
+  "use_wandb_tracking" : True,
+  "project": "BasicGNNProject"
 }

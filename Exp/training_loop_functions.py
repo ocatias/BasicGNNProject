@@ -13,8 +13,8 @@ def get_tracking_dict():
 def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dict):
     batch_size = batch.y.shape[0]
 
-    # Necessary because ogbg-molpcba + CRE transforms the edge_index to a float
-    batch.edge_index = batch.edge_index.long()
+    # I think this was only necessary for ogbg-molpcba + CRE:
+    # batch.edge_index = batch.edge_index.long()
 
     if batch.edge_attr is not None and len(batch.edge_attr.shape) == 1:
         batch.edge_attr = batch.edge_attr.view(-1, 1)
@@ -45,17 +45,12 @@ def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dic
 
     tracking_dict["y_preds"] += predictions.cpu()
     tracking_dict["y_true"] += y.cpu()
-    # print(f"tracking_dict: {tracking_dict['y_true'][-1].shape}")
-
-    # print(predictions.cpu().shape, y.cpu().shape, tracking_dict["y_preds"][-1].shape, tracking_dict["y_true"][-1].shape)
-
     tracking_dict["batch_losses"].append(loss.item())
     tracking_dict["total_loss"] += loss.item()*batch_size
     return loss
 
 def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metric_method=None,train=False):
     output_dict["total_loss"] = tracking_dict["total_loss"] / len(loader.dataset)
-    # print(tracking_dict)
     if train:
         return output_dict
 
@@ -70,6 +65,7 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
             y_true = torch.unsqueeze(y_true, dim = 1)
 
         output_dict[metric] = metric_method(y_true, y_preds)[metric.replace(" (ogb)", "")]
+        
     elif metric == 'mae':
         y_preds = torch.concat(tracking_dict["y_preds"])
         y_true = torch.concat(tracking_dict["y_true"])
@@ -77,6 +73,7 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
         y_true = torch.unsqueeze(y_true, dim = 1)
         l1 = torch.nn.L1Loss()
         output_dict["mae"] = float(l1(y_preds, y_true))
+        
     return output_dict
 
 def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking, metric_method=None):
@@ -95,6 +92,7 @@ def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_track
 
         if use_tracking:
             wandb.log({"Train/BatchLoss": loss.item()})
+            
     return compute_final_tracking_dict(tracking_dict, {}, train_loader, eval_name, metric_method=metric_method, train=True)
 
 def eval(model, device, loader, loss_fn, eval_name, metric_method=None):
@@ -109,9 +107,13 @@ def eval(model, device, loader, loss_fn, eval_name, metric_method=None):
             compute_loss_predictions(batch, model, eval_name, device, loss_fn, tracking_dict)
 
     eval_dict = compute_final_tracking_dict(tracking_dict, {}, loader, eval_name, metric_method=metric_method)
+    
     return eval_dict
 
 def step_scheduler(scheduler, args, val_loss):
+    """
+        Steps the learning rate scheduler forward by one
+    """
     if args.lr_scheduler == 'StepLR':
         scheduler.step()
     elif args.lr_scheduler == 'None':
