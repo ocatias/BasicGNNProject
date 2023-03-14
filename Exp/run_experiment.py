@@ -311,9 +311,6 @@ def find_eval_params(args, grid, split):
                 
             if nr_prev_errors > allowed_nr_errors:
                 raise Exception("Too many training runs crashed.")
-            
-            # We don't count a try if it fails
-            c -= 1
 
     print("Finished search.\n", "Selecting best parameters.")
             
