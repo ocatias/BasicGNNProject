@@ -1,6 +1,8 @@
 datasets/
+!datasets/splits/
 wandb/
 Results/
+!Results/.gitignore
 
 
 # Byte-compiled / optimized / DLL files
