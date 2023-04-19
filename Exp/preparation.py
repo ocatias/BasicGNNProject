@@ -100,7 +100,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
             return MLP(num_features=num_vertex_features, num_layers=args.num_layers, hidden=args.emb_dim, 
                     num_classes=num_classes, num_tasks=num_tasks, dropout_rate=args.drop_out, graph_pooling=args.pooling)
     else: # Probably don't need other models
-        pass
+        raise ValueError("Unknown model name")
 
     return model
 
