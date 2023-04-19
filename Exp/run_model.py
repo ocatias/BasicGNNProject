@@ -21,14 +21,14 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     
-def track_epoch(epoch, train_result, val_result, test_result, lr):
+def track_epoch(epoch, metric_name, train_result, val_result, test_result, lr):
     wandb.log({
         "Epoch": epoch,
         "Train/Loss": train_result["total_loss"],
         "Val/Loss": val_result["total_loss"],
-        f"Val/{eval_name}": val_result[eval_name],
+        f"Val/{metric_name}": val_result[metric_name],
         "Test/Loss": test_result["total_loss"],
-        f"Test/{eval_name}": test_result[eval_name],
+        f"Test/{metric_name}": test_result[metric_name],
         "LearningRate": lr
         })
     
@@ -89,7 +89,7 @@ def main(args):
         print_progress(train_result['total_loss'], val_result['total_loss'], test_result['total_loss'], eval_name, val_result[eval_name], test_result[eval_name])
 
         if use_tracking:
-            track_epoch(epoch, train_result, val_result, test_result, optimizer.param_groups[0]['lr'])
+            track_epoch(epoch, eval_name, train_result, val_result, test_result, optimizer.param_groups[0]['lr'])
 
         step_scheduler(scheduler, args, val_result["total_loss"])
 
