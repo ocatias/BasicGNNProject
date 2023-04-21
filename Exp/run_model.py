@@ -109,7 +109,7 @@ def main(args):
     test_result = list_of_dictionary_to_dictionary_of_lists(test_results)
 
     
-    if eval_name == "mae":
+    if eval_name in ["mae", "rmse (ogb)"]:
         best_val_epoch = np.argmin(val_results[eval_name])
         mode = "min"
     else:
