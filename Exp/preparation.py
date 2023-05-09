@@ -11,6 +11,7 @@ from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims
 
+from Misc.transform_to_k_wl import TransforToKWl
 from Models.gnn import GNN
 from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
 from Models.mlp import MLP
@@ -30,6 +31,10 @@ def get_transform(args, split = None):
       
     if args.do_drop_feat:
         transforms.append(DropFeatures(args.emb_dim))
+
+    if args.transform_k_wl:
+        transforms.append(TransforToKWl(args.transform_k_wl))
+
 
     return Compose(transforms)
 

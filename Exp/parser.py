@@ -85,7 +85,9 @@ def parse_args(passed_args=None):
 
     parser.add_argument('--drop_feat', type=int, default=0,
                         help="Set to 1 to drop all edge and vertex features from the graph (default: 0)")
-                    
+
+    parser.add_argument('--transform_k_wl', type=int, default=0,
+                        help="Transform dataset to k-WL dataset. Specify K here. K must be 2 or 3")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:
