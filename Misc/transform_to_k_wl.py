@@ -32,10 +32,13 @@ class TransforToKWl(BaseTransform):
 
     def graph_to_k_wl_graph(self, graph, k=3):
         vert_num = graph['num_nodes']
+        num_edges = graph.edge_attr.shape[0]
+        if num_edges == 0:
+            return graph
+        len_edge_attr = graph.edge_attr.shape[1]
         all_combinations = list(combinations(list(range(vert_num)), k))
         new_adj = [[None for j in range(len(all_combinations))] for i in range(len(all_combinations))]
         old_adj = self.create_adjacency_from_graph(graph, vert_num)
-        len_edge_attr = len(graph.edge_attr[0])
         new_x = [0] * len(new_adj)
         for i, c1 in enumerate(all_combinations):
             for j, c2 in enumerate(all_combinations):
@@ -84,7 +87,6 @@ class TransforToKWl(BaseTransform):
 
     def __call__(self, data: Data) -> Data:
         return self.graph_to_k_wl_graph(data)
-
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})')
