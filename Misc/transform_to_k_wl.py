@@ -1,7 +1,7 @@
 from copy import deepcopy
 from itertools import combinations
 
-from torch import transpose, stack, mode, tensor, cat, zeros
+from torch import transpose, stack, mode, tensor, cat, zeros, empty
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 
@@ -49,7 +49,7 @@ class TransforToKWl(BaseTransform):
     def graph_to_k_wl_graph(self, graph):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
-        if num_edges < 2:
+        if vert_num < 2 or num_edges == 0:
             return graph
         len_edge_attr = graph.edge_attr.shape[1]
         if vert_num not in self.matrices:
@@ -96,8 +96,13 @@ class TransforToKWl(BaseTransform):
                     new_edge[0].append(i)
                     new_edge[1].append(j)
                     new_edge_attr.append(e)
-        graph.edge_attr = stack(new_edge_attr)
-        graph.edge_index = tensor(new_edge)
+
+        if len(new_edge[0]) > 0:
+            graph.edge_attr = stack(new_edge_attr)
+            graph.edge_index = tensor(new_edge)
+        else:
+            graph.edge_attr = empty((0, len_edge_attr + 1))
+            graph.edge_index = empty((2, 0))
         return graph
 
     def __call__(self, data: Data) -> Data:
