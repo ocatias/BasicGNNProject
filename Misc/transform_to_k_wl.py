@@ -49,11 +49,10 @@ class TransforToKWl(BaseTransform):
     def graph_to_k_wl_graph(self, graph):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
-        if num_edges == 0:
+        if num_edges < 2:
             return graph
         len_edge_attr = graph.edge_attr.shape[1]
         if vert_num not in self.matrices:
-            print('creating new matrix', vert_num)
             self.matrices[vert_num] = self.create_empty_matrix(vert_num)
         all_combinations, new_adj = deepcopy(self.matrices[vert_num])
         old_adj = self.create_adjacency_from_graph(graph, vert_num)
