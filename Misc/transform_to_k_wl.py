@@ -2,6 +2,7 @@ from copy import deepcopy
 from itertools import combinations
 
 from torch import transpose, stack, mode, tensor, cat, zeros, empty
+from torch.nn.functional import pad
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 
@@ -50,6 +51,11 @@ class TransforToKWl(BaseTransform):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
         if vert_num < 2 or num_edges == 0:
+            if num_edges == 0:
+                graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1))
+            else:
+                graph.edge_attr = graph.edge_attr.expand(-1, graph.edge_attr.shape[1] + 1)
+            graph.x = pad(graph.x, pad=(1, 0, 0, 0), value=0)
             return graph
         len_edge_attr = graph.edge_attr.shape[1]
         if vert_num not in self.matrices:
