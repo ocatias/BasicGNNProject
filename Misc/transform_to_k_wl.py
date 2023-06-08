@@ -1,7 +1,8 @@
 from copy import deepcopy
-from itertools import combinations
+from itertools import product, combinations
 
-from torch import transpose, stack, mode, tensor, cat, zeros, empty
+import torch
+from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32
 from torch.nn.functional import pad
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
@@ -19,13 +20,14 @@ class TransforToKWl(BaseTransform):
     def create_empty_matrix(self, n):
         if n == 0:
             return [], [[]]
-        all_combinations = list(combinations(list(range(n)), self.k))
+        all_combinations = list(product(list(range(n)), repeat=self.k))
         new_adj = [[None for j in range(len(all_combinations))] for i in range(len(all_combinations))]
         for i, c1 in enumerate(all_combinations):
             for j, c2 in enumerate(all_combinations):
                 # the adjacency is simple. If the new vertices share old vertices except one.
                 # The number is the position where they differ
                 new_adj[i][j] = self.has_common(c1, c2)
+        # TODO: add sanity check. Num vertices and edges
         return all_combinations, new_adj
 
     def has_common(self, c1, c2):
@@ -52,7 +54,7 @@ class TransforToKWl(BaseTransform):
         num_edges = graph.edge_attr.shape[0]
         if vert_num < 2 or num_edges == 0:
             if num_edges == 0:
-                graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1))
+                graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1), dtype=int32)
             else:
                 graph.edge_attr = graph.edge_attr.expand(-1, graph.edge_attr.shape[1] + 1)
             graph.x = pad(graph.x, pad=(1, 0, 0, 0), value=0)
@@ -76,7 +78,7 @@ class TransforToKWl(BaseTransform):
                     # in case there was no edge between any of the graph vertices
                     if len(selected_attrs) == 0:
                         new_adj[i][j] = cat((tensor([new_adj[i][j]]),
-                                             zeros((len_edge_attr))))
+                                             zeros((len_edge_attr), dtype=int32)))
                     else:
                         new_adj[i][j] = cat((tensor([new_adj[i][j]]),
                                              mode(stack(selected_attrs),
@@ -107,8 +109,8 @@ class TransforToKWl(BaseTransform):
             graph.edge_attr = stack(new_edge_attr)
             graph.edge_index = tensor(new_edge)
         else:
-            graph.edge_attr = empty((0, len_edge_attr + 1))
-            graph.edge_index = empty((2, 0))
+            graph.edge_attr = empty((0, len_edge_attr + 1), dtype=int32)
+            graph.edge_index = empty((2, 0), dtype=int32)
         return graph
 
     def __call__(self, data: Data) -> Data:
