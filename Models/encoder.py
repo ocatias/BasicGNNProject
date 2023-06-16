@@ -4,14 +4,14 @@ from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 
 class NodeEncoder(torch.nn.Module):
 
-    #TODO set uses_k_wl_transform to False and pass it down from args
+    # TODO set uses_k_wl_transform to False and pass it down from args
     def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=True):
         super(NodeEncoder, self).__init__()
         self.atom_embedding_list = torch.nn.ModuleList()
         if feature_dims is None:
             feature_dims = get_atom_feature_dims()
         if uses_k_wl_transform:
-            feature_dims = [1] + feature_dims
+            feature_dims = [10] + feature_dims
         for i, dim in enumerate(feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
@@ -27,7 +27,7 @@ class NodeEncoder(torch.nn.Module):
 
 
 class EdgeEncoder(torch.nn.Module):
-    #TODO set uses_k_wl_transform to False and pass it down from args
+    # TODO set uses_k_wl_transform to False and pass it down from args
     def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=True):
         super(EdgeEncoder, self).__init__()
 
@@ -37,7 +37,7 @@ class EdgeEncoder(torch.nn.Module):
             feature_dims = get_bond_feature_dims()
 
         if uses_k_wl_transform:
-            feature_dims = [1] + feature_dims
+            feature_dims = [100] + feature_dims
         for i, dim in enumerate(feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
@@ -47,7 +47,6 @@ class EdgeEncoder(torch.nn.Module):
         bond_embedding = 0
         for i in range(edge_attr.shape[1]):
             bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
-
         return bond_embedding
 
 
