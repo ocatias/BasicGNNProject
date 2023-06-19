@@ -1,7 +1,7 @@
 program: Exp/run_model.py
 command:
 - ${env}
-- /home/fjogl/miniconda3/envs/GNNs/bin/python
+- /home/obrichta/miniconda3/envs/GNNs/bin/python
 - ${program}
 - ${args}
 metric:
