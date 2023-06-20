@@ -83,7 +83,6 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
     node_feature_dims = []
     
     model = args.model.lower()
-
     if args.dataset.lower() == "zinc"and not args.do_drop_feat:
         node_feature_dims.append(21)
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims, uses_k_wl_transform=uses_k_wl_transform)
@@ -92,7 +91,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
 
         node_feature_dims += get_atom_feature_dims()
         print("node_feature_dims: ", node_feature_dims)
-        node_encoder, edge_encoder = NodeEncoder(args.emb_dim, feature_dims=node_feature_dims), EdgeEncoder(args.emb_dim)
+        node_encoder, edge_encoder = NodeEncoder(args.emb_dim, feature_dims=node_feature_dims, uses_k_wl_transform=uses_k_wl_transform), EdgeEncoder(args.emb_dim, uses_k_wl_transform=uses_k_wl_transform)
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
             

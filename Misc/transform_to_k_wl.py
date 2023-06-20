@@ -118,7 +118,7 @@ class TransforToKWl(BaseTransform):
             graph.edge_attr = empty((0, len_edge_attr + 1), dtype=int32)
             graph.edge_index = empty((2, 0), dtype=int32)
         self.average_num_of_vertices = mean((self.average_num_of_vertices, vert_num))
-        self.average_num_of_new_vertices = mean((self.average_num_of_new_vertices, vert_num ** 2))
+        self.average_num_of_new_vertices = mean((self.average_num_of_new_vertices, vert_num ** self.k))
         return graph
 
     def __call__(self, data: Data) -> Data:
