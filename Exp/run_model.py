@@ -58,7 +58,7 @@ def main(args):
     print(f"#Classes: {num_classes}")
     print(f"#Tasks: {num_tasks}")
 
-    model = get_model(args, num_classes, num_vertex_features, num_tasks)
+    model = get_model(args, num_classes, num_vertex_features, num_tasks, args.transform_k_wl > 0)
     nr_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model.to(device)
     optimizer, scheduler = get_optimizer_scheduler(model, args)

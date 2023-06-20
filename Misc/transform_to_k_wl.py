@@ -1,5 +1,6 @@
 from copy import deepcopy
 from itertools import product, combinations
+from statistics import mean
 
 import torch
 from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32
@@ -16,6 +17,9 @@ class TransforToKWl(BaseTransform):
         self.matrices = {}
         for k in range(30):
             self.matrices[k] = (self.create_empty_matrix(k))
+
+        self.average_num_of_vertices = 0
+        self.average_num_of_new_vertices = 0
 
     def create_empty_matrix(self, n):
         if n == 0:
@@ -113,6 +117,8 @@ class TransforToKWl(BaseTransform):
         else:
             graph.edge_attr = empty((0, len_edge_attr + 1), dtype=int32)
             graph.edge_index = empty((2, 0), dtype=int32)
+        self.average_num_of_vertices = mean((self.average_num_of_vertices, vert_num))
+        self.average_num_of_new_vertices = mean((self.average_num_of_new_vertices, vert_num ** 2))
         return graph
 
     def __call__(self, data: Data) -> Data:
@@ -120,3 +126,7 @@ class TransforToKWl(BaseTransform):
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})')
+
+    def __del__(self):
+        print('average_num_of_vertices', self.average_num_of_vertices)
+        print('average_num_of_new_vertices', self.average_num_of_new_vertices)

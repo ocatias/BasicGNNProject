@@ -79,15 +79,15 @@ def load_dataset(args, config):
 
     return train_loader, val_loader, test_loader
 
-def get_model(args, num_classes, num_vertex_features, num_tasks):
+def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_transform):
     node_feature_dims = []
     
     model = args.model.lower()
 
     if args.dataset.lower() == "zinc"and not args.do_drop_feat:
         node_feature_dims.append(21)
-        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
-        edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[4])
+        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims, uses_k_wl_transform=uses_k_wl_transform)
+        edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[4], uses_k_wl_transform=uses_k_wl_transform)
     elif args.dataset.lower() in ["ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
 
         node_feature_dims += get_atom_feature_dims()
