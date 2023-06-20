@@ -50,12 +50,12 @@ def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dic
     return loss
 
 def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metric_method=None,train=False):
-    output_dict["total_loss"] = tracking_dict["total_loss"] / len(loader.dataset)
+    output_dict["total_loss"] = float(tracking_dict["total_loss"] / len(loader.dataset))
     if train:
         return output_dict
 
     if metric == 'accuracy':
-        output_dict["accuracy"] = tracking_dict["correct_classifications"] / len(loader.dataset)
+        output_dict["accuracy"] =  float(tracking_dict["correct_classifications"] / len(loader.dataset))
     elif "(ogb)" in metric:
         y_preds = torch.stack(tracking_dict["y_preds"])
         y_true = torch.stack(tracking_dict["y_true"])
@@ -64,7 +64,7 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
             y_preds = torch.unsqueeze(y_preds, dim = 1)
             y_true = torch.unsqueeze(y_true, dim = 1)
 
-        output_dict[metric] = metric_method(y_true, y_preds)[metric.replace(" (ogb)", "")]
+        output_dict[metric] =  float(metric_method(y_true, y_preds)[metric.replace(" (ogb)", "")])
         
     elif metric == 'mae':
         y_preds = torch.concat(tracking_dict["y_preds"])
@@ -89,10 +89,12 @@ def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_track
 
         loss.backward()
         optimizer.step()
-
+        
         if use_tracking:
             wandb.log({"Train/BatchLoss": loss.item()})
-            
+        
+        del batch, loss
+
     return compute_final_tracking_dict(tracking_dict, {}, train_loader, eval_name, metric_method=metric_method, train=True)
 
 def eval(model, device, loader, loss_fn, eval_name, metric_method=None):
