@@ -3,7 +3,7 @@ Trains and evaluates a model a single time for given hyperparameters.
 """
 
 import random
-import time 
+import time
 import os
 
 import wandb
@@ -16,11 +16,13 @@ from Misc.utils import list_of_dictionary_to_dictionary_of_lists
 from Exp.preparation import load_dataset, get_model, get_optimizer_scheduler, get_loss
 from Exp.training_loop_functions import train, eval, step_scheduler
 
+
 def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    
+
+
 def track_epoch(epoch, metric_name, train_result, val_result, test_result, lr):
     wandb.log({
         "Epoch": epoch,
@@ -30,30 +32,32 @@ def track_epoch(epoch, metric_name, train_result, val_result, test_result, lr):
         "Test/Loss": test_result["total_loss"],
         f"Test/{metric_name}": test_result[metric_name],
         "LearningRate": lr
-        })
-    
+    })
+
+
 def print_progress(train_loss, val_loss, test_loss, metric_name, val_metric, test_metric):
     print(f"\tTRAIN\t loss: {train_loss:6.4f}")
     print(f"\tVAL\t loss: {val_loss:6.4f}\t  {metric_name}: {val_metric:10.4f}")
     print(f"\tTEST\t loss: {test_loss:6.4f}\t  {metric_name}: {test_metric:10.4f}")
-    
+
+
 def main(args):
     print(args)
     device = args.device
     use_tracking = args.use_tracking
-    
+
     set_seed(args.seed)
     train_loader, val_loader, test_loader = load_dataset(args, config)
     num_classes, num_vertex_features = train_loader.dataset.num_classes, train_loader.dataset.num_node_features
-    
+
     if args.dataset.lower() == "zinc" or "ogb" in args.dataset.lower():
         num_classes = 1
-   
+
     try:
         num_tasks = train_loader.dataset.num_tasks
     except:
         num_tasks = 1
-        
+
     print(f"#Features: {num_vertex_features}")
     print(f"#Classes: {num_classes}")
     print(f"#Tasks: {num_tasks}")
@@ -70,15 +74,16 @@ def main(args):
     if use_tracking:
         os.environ["WANDB_SILENT"] = "true"
         wandb.init(
-            config = args,
-            project = config.project)
+            config=args,
+            project=config.project)
 
     print("Begin training.\n")
     time_start = time.time()
     train_results, val_results, test_results = [], [], []
     for epoch in range(1, args.epochs + 1):
         print(f"Epoch {epoch}")
-        train_result = train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking, metric_method=metric_method)
+        train_result = train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking,
+                             metric_method=metric_method)
         val_result = eval(model, device, val_loader, loss_fct, eval_name, metric_method=metric_method)
         test_result = eval(model, device, test_loader, loss_fct, eval_name, metric_method=metric_method)
 
@@ -86,7 +91,8 @@ def main(args):
         val_results.append(val_result)
         test_results.append(test_result)
 
-        print_progress(train_result['total_loss'], val_result['total_loss'], test_result['total_loss'], eval_name, val_result[eval_name], test_result[eval_name])
+        print_progress(train_result['total_loss'], val_result['total_loss'], test_result['total_loss'], eval_name,
+                       val_result[eval_name], test_result[eval_name])
 
         if use_tracking:
             track_epoch(epoch, eval_name, train_result, val_result, test_result, optimizer.param_groups[0]['lr'])
@@ -95,10 +101,10 @@ def main(args):
 
         # EXIT CONDITIONS
         if optimizer.param_groups[0]['lr'] < args.min_lr:
-                print("\nLR reached minimum: exiting.")
-                break
+            print("\nLR reached minimum: exiting.")
+            break
 
-        runtime = (time.time()-time_start)/3600
+        runtime = (time.time() - time_start) / 3600
         if args.max_time > 0 and runtime > args.max_time:
             print("\nMaximum training time reached: exiting.")
             break
@@ -108,7 +114,6 @@ def main(args):
     val_results = list_of_dictionary_to_dictionary_of_lists(val_results)
     test_result = list_of_dictionary_to_dictionary_of_lists(test_results)
 
-    
     if eval_name in ["mae", "rmse (ogb)"]:
         best_val_epoch = np.argmin(val_results[eval_name])
         mode = "min"
@@ -116,7 +121,8 @@ def main(args):
         best_val_epoch = np.argmax(val_results[eval_name])
         mode = "max"
 
-    loss_train, loss_val, loss_test = train_results['total_loss'][best_val_epoch], val_results['total_loss'][best_val_epoch], test_result['total_loss'][best_val_epoch]
+    loss_train, loss_val, loss_test = train_results['total_loss'][best_val_epoch], val_results['total_loss'][
+        best_val_epoch], test_result['total_loss'][best_val_epoch]
     result_val, result_test = val_results[eval_name][best_val_epoch], test_result[eval_name][best_val_epoch]
 
     print("\n\nFinal Result:")
@@ -136,23 +142,25 @@ def main(args):
 
     return {
         "mode": mode,
-        "loss_train": loss_train, 
-        "loss_val":loss_val,
-        "loss_test": loss_test,
-        "val": result_val,
-        "test": result_test,
-        "runtime_hours":  runtime,
-        "epochs": epoch,
+        "loss_train": float(loss_train),
+        "loss_val": float(loss_val),
+        "loss_test": float(loss_test),
+        "val": float(result_val),
+        "test": float(result_test),
+        "runtime_hours": float(runtime),
+        "epochs": int(epoch),
         "best_val_epoch": int(best_val_epoch),
-        "parameters": nr_parameters,
+        "parameters": int(nr_parameters),
         "details_train": train_results,
         "details_val": val_results,
         "details_test": test_results,
-        }        
+    }
 
-def run(passed_args = None):
+
+def run(passed_args=None):
     args = parse_args(passed_args)
     return main(args)
+
 
 if __name__ == "__main__":
     run()
