@@ -158,6 +158,7 @@ def main(args):
 
 
 def run(passed_args=None):
+    torch.cuda.empty_cache()
     args = parse_args(passed_args)
     return main(args)
 

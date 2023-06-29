@@ -1,5 +1,5 @@
 epochs: [100]
-batch_size: [32]
+batch_size: [16]
 emb_dim: [32, 64, 128]
 drop_out: [0.0, 0.5]
 num_layer: [2,3,4,5,6]
