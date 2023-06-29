@@ -11,6 +11,7 @@ import sys
 from collections import defaultdict
 import random
 
+import torch
 import yaml
 from sklearn.model_selection import ParameterGrid
 import numpy as np
@@ -183,8 +184,11 @@ def evaluate_params(param_dict, hyperparams_path):
 
     with open(output_path, "w") as file:
         json.dump(storage_dict, file, indent=4)
-
-    return result_dict["mode"]
+    del result_dict
+    del storage_dict
+    gc.collect()
+    torch.cuda.empty_cache()
+    # return result_dict["mode"]
 
 
 def load_best_params(mode, hyperparams_path):
@@ -323,7 +327,7 @@ def find_eval_params(args, grid, split):
                 break
 
             # Evaluate.
-            mode = evaluate_params(param_dict, hyperparams_path)
+            evaluate_params(param_dict, hyperparams_path)
 
         except Exception as e:
             nr_prev_errors = store_error(e, errors_path, "hyperparam_search", {"params": param_dict})
@@ -333,17 +337,17 @@ def find_eval_params(args, grid, split):
 
     print("Finished search.\n", "Selecting best parameters.")
 
-    if len(grid) == 1 or args.candidates == 1:
-        # Don't load parameters if we have not searched for them
-        best_params = param_dict
-        print(f"Only one parameter pair / candidate (not searching for params)")
-
-    else:
-        best_params = load_best_params(mode, hyperparams_path)
-
-    print("Evaluating the best parameters.")
-    run_final_evaluation(args, final_eval_path, best_params)
-    return mode
+    # if len(grid) == 1 or args.candidates == 1:
+    #     # Don't load parameters if we have not searched for them
+    #     best_params = param_dict
+    #     print(f"Only one parameter pair / candidate (not searching for params)")
+    #
+    # else:
+    #     best_params = load_best_params(mode, hyperparams_path)
+    #
+    # print("Evaluating the best parameters.")
+    # run_final_evaluation(args, final_eval_path, best_params)
+    # return mode
 
 
 def main(passed_args=None):
@@ -358,12 +362,12 @@ def main(passed_args=None):
 
     try:
         for split in range(args.folds):
-            mode = find_eval_params(args, grid, split)
+            find_eval_params(args, grid, split)
 
-        print("Collect evaluation results.")
-        final_results = collect_eval_results(args, mode)
-        output = compute_store_output(directory, final_results)
-        print(output)
+        # print("Collect evaluation results.")
+        # final_results = collect_eval_results(args, mode)
+        # output = compute_store_output(directory, final_results)
+        # print(output)
 
     except Exception as e:
         # Detected an error: store the params and the error
