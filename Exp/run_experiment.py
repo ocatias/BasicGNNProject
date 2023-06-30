@@ -23,7 +23,7 @@ from Misc.utils import transform_dict_to_args_list
 keys_to_avg = ["runtime_hours", "parameters", "val", "test"]
 
 # How often an exception can be thrown by training / evaluation without the experiment stopping
-allowed_nr_errors = 50
+allowed_nr_errors = 5000
 
 binary_class_ogb_datasets = ["molbace", "molbbbp", "molclintox", "molmuv", "molpcba", "molsider", "moltox21",
                              "moltoxcast", "molhiv", "molchembl"]
