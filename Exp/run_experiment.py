@@ -197,7 +197,7 @@ def load_best_params(mode, hyperparams_path):
     :returns: the best params
     """
     param_files = glob.glob(os.path.join(hyperparams_path, "*.json"))
-    print(hyperparams_path)
+    # print(hyperparams_path)
     if len(param_files) == 0:
         raise Exception("No hyperparameters found.")
 
@@ -235,7 +235,7 @@ def run_final_evaluation(args, final_eval_path, best_params):
         output_dict.update(copy.deepcopy(result_dict))
 
         output_path = os.path.join(final_eval_path, f"eval_{len(glob.glob(os.path.join(final_eval_path, '*')))}.json")
-        print(output_path)
+        # print(output_path)
         with open(output_path, "w") as file:
             json.dump(output_dict, file, indent=4)
 
@@ -299,7 +299,7 @@ def find_eval_params(args, grid, split):
     """
     parameter_space = copy.deepcopy(grid)
     random.shuffle(parameter_space)
-    print('parameter_space', parameter_space)
+    # print('parameter_space', parameter_space)
     print(f"Grid contains {len(grid)} combinations")
     _, _, hyperparams_path, final_eval_path, errors_path = get_paths(args, split)
 
