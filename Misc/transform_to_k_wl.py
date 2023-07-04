@@ -66,9 +66,13 @@ class TransforToKWl(BaseTransform):
             graph.x = pad(graph.x, pad=(1, 0, 0, 0), value=0)
             return graph
         len_edge_attr = graph.edge_attr.shape[1]
-        if vert_num not in self.matrices:
-            self.matrices[vert_num] = self.create_empty_matrix(vert_num)
-        all_combinations, new_adj = deepcopy(self.matrices[vert_num])
+        if vert_num < 100:
+            if vert_num not in self.matrices:
+                self.matrices[vert_num] = self.create_empty_matrix(vert_num)
+            all_combinations, new_adj = deepcopy(self.matrices[vert_num])
+        else:
+            all_combinations, new_adj = self.create_empty_matrix(vert_num)
+
         old_adj = self.create_adjacency_from_graph(graph, vert_num)
         new_x = [0] * len(new_adj)
         for i, c1 in enumerate(all_combinations):
