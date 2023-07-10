@@ -1,5 +1,6 @@
 # BasicGNNProject
-This repository is meant as a starting point for working on your own GNN research projects. This code allows you to tune, train and evaluate basic models (MLP, GCN and GIN) on some well known graph datasets (`ZINC`, `CSL`, and OGB datasets). Some projects based on earlier versions of this repository are: 
+This repository is meant as a starting point for working on your own GNN research projects. This code allows you to tune, train and evaluate basic models (MLP, GCN and GIN) on some well known graph datasets (`ZINC`, `CSL`, and OGB datasets). Some projects based on repository are: 
+- _Expectation-Complete Graph Representations with Homomorphisms_, ICML, 2023: [paper](https://openreview.net/forum?id=ppgRPC14uI), [code](https://github.com/ocatias/HomCountGNNs)
 - _Weisfeiler and Leman Return with Graph Transformations_, MLG@ECMLPKDD, 2022: [paper](https://openreview.net/pdf?id=Oq5mzL-3SUV), [code](https://github.com/ocatias/WL_Return)
 - _Reducing Learning on Cell Complexes to Graphs_, GTRL@ICLR, 2022, [paper](https://openreview.net/pdf?id=HKUxAE-J6lq), [code](https://github.com/ocatias/CellComplexesToGraphs)
 
