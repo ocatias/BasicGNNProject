@@ -66,7 +66,7 @@ class TransforToKWl(BaseTransform):
             graph.x = pad(graph.x, pad=(1, 0, 0, 0), value=0)
             return graph
         len_edge_attr = graph.edge_attr.shape[1]
-        if vert_num < 40:
+        if vert_num < 30:
             if vert_num not in self.matrices:
                 self.matrices[vert_num] = self.create_empty_matrix(vert_num)
             all_combinations, new_adj = deepcopy(self.matrices[vert_num])
