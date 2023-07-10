@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import deepcopy
 from itertools import product, combinations
 from statistics import mean
@@ -20,6 +21,7 @@ class TransforToKWl(BaseTransform):
 
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
+        self.vertices_num = defaultdict(int)
 
     def create_empty_matrix(self, n):
         if n == 0:
@@ -58,7 +60,8 @@ class TransforToKWl(BaseTransform):
     def graph_to_k_wl_graph(self, graph):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
-        if vert_num < 2 or num_edges == 0:
+        # TODO this excludes any graph larger than 60 nodes from calculation
+        if vert_num < 2 or num_edges == 0 or vert_num > 60:
             if num_edges == 0:
                 graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1), dtype=int32)
             else:
@@ -126,11 +129,13 @@ class TransforToKWl(BaseTransform):
         return graph
 
     def __call__(self, data: Data) -> Data:
+        self.vertices_num[data['num_nodes']] += 1
         return self.graph_to_k_wl_graph(data)
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})')
 
     def __del__(self):
+        print('number of vertices in graphs', self.vertices_num)
         print('average_num_of_vertices', self.average_num_of_vertices)
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
