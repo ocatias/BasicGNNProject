@@ -61,7 +61,7 @@ class TransforToKWl(BaseTransform):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
         # TODO this excludes any graph larger than 60 nodes from calculation
-        if vert_num < 2 or num_edges == 0 or vert_num > 60:
+        if vert_num < 2 or num_edges == 0 or vert_num > 30:
             if num_edges == 0:
                 graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1), dtype=int32)
             else:

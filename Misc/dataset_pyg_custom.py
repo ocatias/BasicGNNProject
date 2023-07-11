@@ -193,7 +193,6 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                 data_list = [self.pre_transform(data) for data in data_list]
 
         data, slices = self.collate(data_list)
-
         print('Saving...')
         torch.save((data, slices), self.processed_paths[0])
 
