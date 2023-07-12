@@ -65,7 +65,9 @@ class TransforToKWl(BaseTransform):
             if num_edges == 0:
                 graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1), dtype=int32)
             else:
-                graph.edge_attr = graph.edge_attr.expand(-1, graph.edge_attr.shape[1] + 1)
+                # graph.edge_attr = graph.edge_attr.expand(-1, graph.edge_attr.shape[1] + 1)
+                graph.edge_attr = pad(graph.edge_attr, pad=(1, 0, 0, 0), value=0)
+
             graph.x = pad(graph.x, pad=(1, 0, 0, 0), value=0)
             return graph
         len_edge_attr = graph.edge_attr.shape[1]
