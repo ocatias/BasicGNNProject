@@ -22,6 +22,7 @@ class TransforToKWl(BaseTransform):
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
         self.vertices_num = defaultdict(int)
+        self.processed_num = 0
 
     def create_empty_graph(self, n):
         if n == 0:
@@ -132,6 +133,9 @@ class TransforToKWl(BaseTransform):
         return graph
 
     def __call__(self, data: Data) -> Data:
+        self.processed_num += 1
+        if self.processed_num % 100 == 0:
+            print(f'transform to k-WL -- done {self.processed_num}')
         self.vertices_num[data['num_nodes']] += 1
         return self.graph_to_k_wl_graph(data)
 
