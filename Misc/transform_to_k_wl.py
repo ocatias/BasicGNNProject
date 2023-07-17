@@ -1,9 +1,13 @@
+import pickle
 from collections import defaultdict
 from copy import deepcopy
 from itertools import product, combinations
 from statistics import mean
 
+import networkx as nx
 import torch
+import torch_geometric
+from matplotlib import pyplot as plt
 from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32
 from torch.nn.functional import pad
 from torch_geometric.data import Data
@@ -11,10 +15,11 @@ from torch_geometric.transforms import BaseTransform
 
 
 class TransforToKWl(BaseTransform):
-    def __init__(self, k: int = True):
+    def __init__(self, k: int):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
+        self.range_k = list(range(k))
         self.matrices = {}
         for k in range(30):
             self.matrices[k] = (self.create_empty_graph(k))
@@ -47,15 +52,14 @@ class TransforToKWl(BaseTransform):
 
     def has_common(self, c1, c2):
         diff_num = 0
-        for i in range(len(c1)):
+        diff_pos = None
+        for i in self.range_k:
             if c1[i] != c2[i]:
                 diff_num += 1
+                diff_pos = i + 1
         if diff_num != 1:
             return None
-
-        for i in range(len(c1)):
-            if c1[i] != c2[i]:
-                return i + 1
+        return diff_pos
 
     def create_adjacency_from_graph(self, graph, size):
         adj = [[None for j in range(size)] for i in range(size)]

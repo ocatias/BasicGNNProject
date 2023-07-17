@@ -171,22 +171,23 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
 
         if self.pre_transform is not None:
             if self.memory_intense_pre_transform:
+                increment_num = 100
                 print('data list len beginning', len(data_list))
                 dir_for_data = os.path.dirname(self.processed_paths[0])
                 print(dir_for_data)
                 i = 0
                 while i < len(data_list):
-                    print(len(data_list[i:i + 1000]))
-                    data_part = [self.pre_transform(data) for data in data_list[i:i + 1000]]
+                    print(len(data_list[i:i + increment_num]))
+                    data_part = [self.pre_transform(data) for data in data_list[i:i + increment_num]]
                     print('finished transformation')
                     file = osp.join(dir_for_data, f'preprocessed_data_part{i}.pt')
                     data, slices = self.collate(data_part)
                     print('Saving part')
                     torch.save((data, slices), file)
-                    i += 1000
+                    i += increment_num
                 data_list = []
-                for x in range(i // 1000):
-                    with open(osp.join(dir_for_data, f'preprocessed_data_part{x * 1000}.pt'), 'rb') as file:
+                for x in range(i // increment_num):
+                    with open(osp.join(dir_for_data, f'preprocessed_data_part{x * increment_num}.pt'), 'rb') as file:
                         data_p, slices_p = torch.load(file)
                     data_list.extend(uncolate(data_p, slices_p))
             else:
