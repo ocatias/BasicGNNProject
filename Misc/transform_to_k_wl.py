@@ -1,3 +1,4 @@
+import copy
 import pickle
 from collections import defaultdict
 from copy import deepcopy
@@ -13,6 +14,8 @@ from torch.nn.functional import pad
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 
+from Misc.biconnected_components_finder import BiconnectedComponents
+
 
 class TransforToKWl(BaseTransform):
     def __init__(self, k: int):
@@ -21,8 +24,8 @@ class TransforToKWl(BaseTransform):
         self.k = k
         self.range_k = list(range(k))
         self.matrices = {}
-        for k in range(20):
-            self.matrices[k] = (self.create_empty_graph(k))
+        # for k in range(20):
+        #     self.matrices[k] = (self.create_empty_graph(k))
 
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
@@ -141,6 +144,12 @@ class TransforToKWl(BaseTransform):
         if self.processed_num % 100 == 0:
             print(f'transform to k-WL -- done {self.processed_num}')
         self.vertices_num[data['num_nodes']] += 1
+        # if data['num_nodes'] > 25:
+        #     with open('debug/one_graph.pkl', 'wb') as file:
+        #         pickle.dump(data, file)
+        #         exit()
+        # else:
+        #     return data
         return self.graph_to_k_wl_graph(data)
 
     def __repr__(self) -> str:
@@ -151,5 +160,61 @@ class TransforToKWl(BaseTransform):
         print('average_num_of_vertices', self.average_num_of_vertices)
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
 
-    def split_graph(self, graph):
-        pass
+    def get_subgraph(self, graph, vertices):
+        new_graph = copy.deepcopy(graph)
+        new_graph.num_nodes = len(vertices)
+        new_graph.x = []
+        new_graph.edge_attr = []
+        new_graph.edge_index = ([], [])
+        vertices_map = defaultdict(lambda: None)
+        v_counter = 0
+        for i in range(graph['num_vertices']):
+            if i in vertices:
+                vertices_map[i] = v_counter
+                v_counter += 1
+                new_graph.x.append(graph.x[i])
+        for i in range(graph.edge_attr.shape[0]):
+            if graph.edge_index[0][i] in vertices and graph.edge_index[1][i] in vertices:
+                new_graph.edge_index[0].append(vertices_map[graph.edge_index[0][i]])
+                new_graph.edge_index[1].append(vertices_map[graph.edge_index[1][i]])
+                new_graph.edge_attr.append(graph.edge_attr[i])
+
+        new_graph.x = stack(new_graph.x)
+        new_graph.edge_attr = stack(new_graph.edge_attr)
+        new_graph.edge_index = tensor(new_graph.edge_index)
+        return new_graph
+
+    @staticmethod
+    def save_picture_of_graph(graph, name):
+        plt.clf()
+        plt.figure(figsize=(18, 18))
+        g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
+        nx.draw_networkx(g)
+        plt.savefig(f'../pictures/graph_{name}.png')
+
+    # @staticmethod
+    # def add_subgraph_to_graph(graph,subgraph, connection_vertices):
+        
+    def k_wl_turbo(self, graph):
+        bf = BiconnectedComponents(graph)
+        groups = bf.BCC()
+        vertices_in_components = defaultdict(lambda: False)
+        for g in groups:
+            for i in g:
+                vertices_in_components[i] = True
+
+        new_graph = copy.deepcopy(graph)
+        # each of the subgraph will have n^k vertices and all vertices that will not be changed
+        new_graph['num_vertices'] = sum([len(n) ** self.k for n in groups]) \
+                                    + graph['num_vertices'] - sum(vertices_in_components.values())
+
+        # get all subgraphs detected by BCC and convert them using k-WL algorithm
+        processed_subgraphs = [self.graph_to_k_wl_graph(self.get_subgraph(graph, g)) for g in groups]
+
+
+if __name__ == '__main__':
+    with open('../debug/one_graph.pkl', 'rb') as file:
+        data = pickle.load(file)
+    transform = TransforToKWl(3)
+
+    transformed_data = transform.k_wl_turbo(data)
