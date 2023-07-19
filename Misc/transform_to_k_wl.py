@@ -18,7 +18,7 @@ from Misc.biconnected_components_finder import BiconnectedComponents
 
 
 class TransforToKWl(BaseTransform):
-    def __init__(self, k: int):
+    def __init__(self, k: int, turbo=False):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
@@ -26,7 +26,7 @@ class TransforToKWl(BaseTransform):
         self.matrices = {}
         # for k in range(20):
         #     self.matrices[k] = (self.create_empty_graph(k))
-
+        self.uses_turbo = turbo
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
         self.vertices_num = defaultdict(int)
@@ -74,20 +74,7 @@ class TransforToKWl(BaseTransform):
     def graph_to_k_wl_graph(self, graph):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
-        # TODO this excludes any graph larger than 60 nodes from calculation
-        if vert_num < 2 or num_edges == 0 or vert_num > 20:
-            # if vert_num > 10:
-            #     plt.clf()
-            #     g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
-            #     nx.draw(g)
-            #     plt.savefig(f'pictures/graph_{sum(self.vertices_num.values())}.png')
-            if num_edges == 0:
-                graph.edge_attr = empty((0, graph.edge_attr.shape[1] + 1), dtype=int32)
-            else:
-                graph.edge_attr = pad(graph.edge_attr, pad=(1, 0, 0, 0), value=0)
 
-            graph.x = pad(graph.x, pad=(1, 0, 0, 0), value=0)
-            return graph
         len_edge_attr = graph.edge_attr.shape[1]
         if vert_num < 30:
             if vert_num not in self.matrices:
@@ -144,16 +131,21 @@ class TransforToKWl(BaseTransform):
         if self.processed_num % 100 == 0:
             print(f'transform to k-WL -- done {self.processed_num}')
         self.vertices_num[data['num_nodes']] += 1
-        # if data['num_nodes'] > 25:
-        #     with open('debug/one_graph.pkl', 'wb') as file:
-        #         pickle.dump(data, file)
-        #         exit()
-        # else:
-        #     return data
-        return self.graph_to_k_wl_graph(data)
+        if data['num_nodes'] < 2 or data.edge_attr.shape[0] == 0:
+            if data.edge_attr.shape[0] == 0:
+                data.edge_attr = empty((0, data.edge_attr.shape[1] + 1), dtype=int32)
+            else:
+                data.edge_attr = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
+
+            data.x = pad(data.x, pad=(1, 0, 0, 0), value=0)
+            return data
+        if self.uses_turbo:
+            return self.k_wl_turbo(data)
+        else:
+            return self.graph_to_k_wl_graph(data)
 
     def __repr__(self) -> str:
-        return (f'{self.__class__.__name__}(k={self.k})')
+        return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})')
 
     def __del__(self):
         print('number of vertices in graphs', self.vertices_num)
@@ -197,7 +189,6 @@ class TransforToKWl(BaseTransform):
     # def add_subgraph_to_graph(graph,subgraph, connection_vertices):
 
     def k_wl_turbo(self, graph):
-        print(graph)
         bf = BiconnectedComponents(graph)
         groups = bf.BCC()
         vertices_in_components = defaultdict(lambda: False)

@@ -35,8 +35,7 @@ def get_transform(args, split=None):
         transforms.append(DropFeatures(args.emb_dim))
 
     if args.transform_k_wl:
-        transforms.append(TransforToKWl(args.transform_k_wl))
-
+        transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo))
     return Compose(transforms)
 
 
@@ -63,8 +62,7 @@ def load_dataset(args, config):
     elif args.dataset.lower() in ["ogbg-molhiv", "ogbg-ppa", "ogbg-code2", "ogbg-molpcba", "ogbg-moltox21",
                                   "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv",
                                   "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
-        dataset = PygGraphPropPredDatasetCustom(root=dir, name=args.dataset.lower(), pre_transform=transform,
-                                                memory_intense_pre_transform=True)
+        dataset = PygGraphPropPredDataset(root=dir, name=args.dataset.lower(), pre_transform=transform)
         split_idx = dataset.get_idx_split()
         datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     elif args.dataset.lower() == "csl":
@@ -104,9 +102,11 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
 
         node_feature_dims += get_atom_feature_dims()
         print("node_feature_dims: ", node_feature_dims)
-        node_encoder, edge_encoder = NodeEncoder(args.emb_dim, feature_dims=node_feature_dims,
-                                                 uses_k_wl_transform=uses_k_wl_transform), EdgeEncoder(args.emb_dim,
-                                                                                                       uses_k_wl_transform=uses_k_wl_transform)
+        node_encoder, edge_encoder = \
+            NodeEncoder(args.emb_dim, feature_dims=node_feature_dims,
+                        uses_k_wl_transform=uses_k_wl_transform), \
+                EdgeEncoder(args.emb_dim,
+                            uses_k_wl_transform=uses_k_wl_transform)
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
 
