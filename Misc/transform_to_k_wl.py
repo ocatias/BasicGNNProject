@@ -21,7 +21,7 @@ class TransforToKWl(BaseTransform):
         self.k = k
         self.range_k = list(range(k))
         self.matrices = {}
-        for k in range(30):
+        for k in range(20):
             self.matrices[k] = (self.create_empty_graph(k))
 
         self.average_num_of_vertices = 0
@@ -72,7 +72,7 @@ class TransforToKWl(BaseTransform):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
         # TODO this excludes any graph larger than 60 nodes from calculation
-        if vert_num < 2 or num_edges == 0 or vert_num > 60:
+        if vert_num < 2 or num_edges == 0 or vert_num > 20:
             # if vert_num > 10:
             #     plt.clf()
             #     g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
