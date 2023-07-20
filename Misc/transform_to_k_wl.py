@@ -30,6 +30,7 @@ class TransforToKWl(BaseTransform):
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
         self.vertices_num = defaultdict(int)
+        self.k_wl_vertices_num = defaultdict(int)
         self.processed_num = 0
 
     def create_empty_graph(self, n):
@@ -74,7 +75,7 @@ class TransforToKWl(BaseTransform):
     def graph_to_k_wl_graph(self, graph):
         vert_num = graph['num_nodes']
         num_edges = graph.edge_attr.shape[0]
-
+        self.k_wl_vertices_num[vert_num] += 1
         len_edge_attr = graph.edge_attr.shape[1]
         if vert_num < 30:
             if vert_num not in self.matrices:
@@ -149,6 +150,7 @@ class TransforToKWl(BaseTransform):
 
     def __del__(self):
         print('number of vertices in graphs', self.vertices_num)
+        print('number of vertices processed by k-WL', self.k_wl_vertices_num)
         print('average_num_of_vertices', self.average_num_of_vertices)
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
 
