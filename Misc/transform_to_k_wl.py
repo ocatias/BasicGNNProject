@@ -131,7 +131,7 @@ class TransforToKWl(BaseTransform):
             if not isinstance(return_mapping, list):
                 mapping = all_combinations
             else:
-                mapping = [return_mapping[j] for i in all_combinations for j in i]
+                mapping = [tuple([return_mapping[j] for j in i]) for i in all_combinations]
             return graph, mapping
         return graph
 
@@ -320,7 +320,8 @@ class TransforToKWl(BaseTransform):
 if __name__ == '__main__':
     with open('../debug/one_graph.pkl', 'rb') as file:
         data = pickle.load(file)
-    transform = TransforToKWl(3)
+    transform = TransforToKWl(2)
 
+    transform.save_picture_of_graph(data, 'transformed_before')
     transformed_data = transform.k_wl_turbo(data)
     transform.save_picture_of_graph(transformed_data, 'transformed_turbo')

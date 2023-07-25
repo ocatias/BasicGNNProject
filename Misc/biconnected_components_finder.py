@@ -106,4 +106,4 @@ class BiconnectedComponents:
                     group_vertices.add(w[1])
                 self.groups.append(deepcopy(group_vertices))
 
-        return [x for x in self.groups if len(x) > 2]
+        return [list(x) for x in self.groups if len(x) > 2]
