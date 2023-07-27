@@ -177,6 +177,7 @@ def evaluate_params(param_dict, hyperparams_path):
     Trains a model for the given hyperparameters and stores the results
     :returns: evaluation mode
     """
+    print('training on ', param_dict)
     result_dict = run(param_dict)
     output_path = os.path.join(hyperparams_path, f"params_{len(glob.glob(os.path.join(hyperparams_path, '*')))}.json")
     storage_dict = {"params": param_dict}
@@ -323,6 +324,7 @@ def find_eval_params(args, grid, split):
 
         try:
             if len(grid) == 1 or args.candidates == 1:
+                print('breaking because no paratemeres left')
                 # Don't search for params if there is only one candidate
                 break
 
