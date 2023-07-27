@@ -4,6 +4,7 @@ import random
 from collections import defaultdict
 from copy import deepcopy
 from itertools import product, combinations
+from os import path
 from statistics import mean
 
 import networkx as nx
@@ -23,6 +24,10 @@ class TransforToKWl(BaseTransform):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
+        if __name__ == '__main__':
+            self.graph_data_path = path.join('..', 'metadata', 'k_wl_graphs')
+        else:
+            self.graph_data_path = path.join('metadata', 'k_wl_graphs')
         self.range_k = list(range(k))
         self.matrices = {}
         # for k in range(20):
@@ -38,6 +43,9 @@ class TransforToKWl(BaseTransform):
     def create_empty_graph(self, n):
         if n == 0:
             return [], [[]]
+        saved_graph = self.load_empty_graph(n)
+        if saved_graph is not None:
+            return saved_graph
         all_combinations = list(product(list(range(n)), repeat=self.k))
         # all_combinations = list(combinations(list(range(n)), self.k))
         edges = [[], []]
@@ -54,6 +62,7 @@ class TransforToKWl(BaseTransform):
 
         if len(all_combinations) != n ** self.k:
             raise ValueError('numbers dont add up', len(all_combinations), n, self.k)
+        self.save_empty_graph((all_combinations, edges, edge_attributes), n)
         return all_combinations, edges, edge_attributes
 
     def has_common(self, c1, c2):
@@ -153,6 +162,19 @@ class TransforToKWl(BaseTransform):
         else:
             return self.graph_to_k_wl_graph(data)
 
+    def save_empty_graph(self, graph, n):
+        pth = path.join(self.graph_data_path, f'empty_graph_{self.k}_{n}.pkl')
+        with open(pth, 'wb+') as file:
+            pickle.dump(graph, file)
+
+    def load_empty_graph(self, n):
+        pth = path.join(self.graph_data_path, f'empty_graph_{self.k}_{n}.pkl')
+        if path.exists(pth):
+            with open(pth, 'rb+') as file:
+                return pickle.load(file)
+        else:
+            return None
+
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})')
 
@@ -194,10 +216,7 @@ class TransforToKWl(BaseTransform):
         plt.figure(figsize=(18, 18))
         g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
         nx.draw_networkx(g)
-        plt.savefig(f'pictures/graph_{name}.png')
-
-    # @staticmethod
-    # def add_subgraph_to_graph(graph,subgraph, connection_vertices):
+        plt.savefig(f'../pictures/graph_{name}.png')
 
     def k_wl_turbo(self, graph):
         bf = BiconnectedComponents(graph)
@@ -320,8 +339,10 @@ class TransforToKWl(BaseTransform):
 if __name__ == '__main__':
     with open('../debug/one_graph.pkl', 'rb') as file:
         data = pickle.load(file)
-    transform = TransforToKWl(2)
-
+    transform = TransforToKWl(3)
+    for i in range(70):
+        transform.create_empty_graph(i)
+    exit()
     transform.save_picture_of_graph(data, 'transformed_before')
     transformed_data = transform.k_wl_turbo(data)
     transform.save_picture_of_graph(transformed_data, 'transformed_turbo')
