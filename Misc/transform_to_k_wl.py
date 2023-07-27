@@ -65,7 +65,7 @@ class TransforToKWl(BaseTransform):
                 diff_pos = i + 1
         if diff_num != 1:
             return None
-        return diff_pos
+        return diff_pos + 1
 
     def create_adjacency_from_graph(self, graph, size):
         adj = [[None for j in range(size)] for i in range(size)]
@@ -109,10 +109,10 @@ class TransforToKWl(BaseTransform):
 
         for i, c in enumerate(all_combinations):
             # works only for K==2 and K==3
-            # sum of number of edges in the subgraph
+            # sum of number of edges in the subgraph plus 1
             # for K larger than 3, I would suggest using hash from WL algorithm on each small subgraph
             # Using bool to detect where edge has value and where None is.
-            k_x = [sum([bool(old_adj[c[j - 1]][c[j]]) for j in range(len(c))])]
+            k_x = [sum([bool(old_adj[c[j - 1]][c[j]]) for j in range(len(c))]) + 1]
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c]), dim=0).values), 0)
 
