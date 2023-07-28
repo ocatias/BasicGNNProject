@@ -1,14 +1,19 @@
+import gc
 import pickle
 
 import pandas as pd
 import shutil, os
 import os.path as osp
+
+import psutil
 import torch
 import numpy as np
 from torch_geometric.data import InMemoryDataset
 from ogb.utils.url import decide_download, download_url, extract_zip
 from ogb.io.read_graph_pyg import read_graph_pyg
 from torch_geometric.data.separate import separate
+
+from Misc.utils import total_size
 
 
 class PygGraphPropPredDatasetCustom(InMemoryDataset):
@@ -176,18 +181,29 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                 dir_for_data = os.path.dirname(self.processed_paths[0])
                 print(dir_for_data)
                 i = 0
+                file_i = 0
+                data_part = []
+                process = psutil.Process()
                 while i < len(data_list):
-                    print(len(data_list[i:i + increment_num]))
-                    data_part = [self.pre_transform(data) for data in data_list[i:i + increment_num]]
-                    print('finished transformation')
-                    file = osp.join(dir_for_data, f'preprocessed_data_part{i}.pt')
-                    data, slices = self.collate(data_part)
-                    print('Saving part')
-                    torch.save((data, slices), file)
-                    i += increment_num
-                data_list = []
-                for x in range(i // increment_num):
-                    with open(osp.join(dir_for_data, f'preprocessed_data_part{x * increment_num}.pt'), 'rb') as file:
+                    data_part.append(self.pre_transform(data_list[i]))
+                    # store the data if it takes more than 45G in RAM
+                    if process.memory_info().rss / 1024 ** 3 > 45:
+                        print(total_size(self.pre_transform))
+                        print('using in GB', process.memory_info().rss / 1024 ** 3)
+                        file = osp.join(dir_for_data, f'preprocessed_data_part{file_i}.pt')
+                        data, slices = self.collate(data_part)
+                        print('Saving part')
+                        torch.save((data, slices), file)
+                        file_i += 1
+                        del data_part
+                        del data
+                        del slices
+                        gc.collect()
+                        data_part = []
+                    i += 1
+                data_list = data_part
+                for x in range(file_i):
+                    with open(osp.join(dir_for_data, f'preprocessed_data_part{x}.pt'), 'rb') as file:
                         data_p, slices_p = torch.load(file)
                     data_list.extend(uncolate(data_p, slices_p))
             else:
