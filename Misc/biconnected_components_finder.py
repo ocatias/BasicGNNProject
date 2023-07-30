@@ -9,7 +9,7 @@ from copy import deepcopy
 class BiconnectedComponents:
 
     def __init__(self, graph):
-        self.V = graph['num_nodes']  # No. of vertices
+        self.V = graph.num_nodes  # No. of vertices
         self.graph = defaultdict(list)  # default dictionary to store graph
         self.Time = 0
         # Count is number of biconnected components

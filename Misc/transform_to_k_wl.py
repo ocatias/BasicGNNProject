@@ -11,7 +11,7 @@ import networkx as nx
 import torch
 import torch_geometric
 from matplotlib import pyplot as plt
-from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32
+from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32, int8
 from torch.nn.functional import pad
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
@@ -84,10 +84,13 @@ class TransforToKWl(BaseTransform):
         return adj
 
     def graph_to_k_wl_graph(self, graph, return_mapping=None):
-        vert_num = graph['num_nodes']
+        vert_num = graph.num_nodes
         num_edges = graph.edge_attr.shape[0]
         self.k_wl_vertices_num[vert_num] += 1
-        len_edge_attr = graph.edge_attr.shape[1]
+        if len(graph.edge_attr.shape) == 1:
+            len_edge_attr = 1
+        else:
+            len_edge_attr = graph.edge_attr.shape[1]
         if vert_num < 30:
             if vert_num not in self.matrices:
                 self.matrices[vert_num] = self.create_empty_graph(vert_num)
@@ -148,15 +151,10 @@ class TransforToKWl(BaseTransform):
         self.processed_num += 1
         if self.processed_num % 100 == 0:
             print(f'transform to k-WL -- done {self.processed_num}')
-        self.vertices_num[data['num_nodes']] += 1
-        if data['num_nodes'] < 2 or data.edge_attr.shape[0] == 0:
-            if data.edge_attr.shape[0] == 0:
-                data.edge_attr = empty((0, data.edge_attr.shape[1] + 1), dtype=int32)
-            else:
-                data.edge_attr = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
-
-            data.x = pad(data.x, pad=(1, 0, 0, 0), value=0)
-            return data
+        num_nodes = data.num_nodes
+        self.vertices_num[num_nodes] += 1
+        if num_nodes < 2 or data.edge_attr.shape[0] == 0:
+            self.add_dimensions_to_graph_without_modifying(data)
         if self.uses_turbo:
             return self.k_wl_turbo(data)
         else:
@@ -193,7 +191,7 @@ class TransforToKWl(BaseTransform):
         new_graph.edge_index = ([], [])
         vertices_map = defaultdict(lambda: None)
         v_counter = 0
-        for i in range(graph['num_nodes']):
+        for i in range(graph.num_nodes):
             if i in vertices:
                 vertices_map[i] = v_counter
                 v_counter += 1
@@ -221,17 +219,20 @@ class TransforToKWl(BaseTransform):
     def k_wl_turbo(self, graph):
         bf = BiconnectedComponents(graph)
         groups = bf.BCC()
+        for i in groups:
+            if len(i) > 40:
+                return self.add_dimensions_to_graph_without_modifying(graph)
         vertices_in_components = defaultdict(lambda: False)
         old_vertex_to_group_mapping = dict()
         for j, g in enumerate(groups):
             for i in g:
                 vertices_in_components[i] = True
                 old_vertex_to_group_mapping[i] = j
-        old_vertex_not_in_subgraphs = [i for i in range(graph['num_nodes']) if not vertices_in_components[i]]
+        old_vertex_not_in_subgraphs = [i for i in range(graph.num_nodes) if not vertices_in_components[i]]
         new_graph = copy.deepcopy(graph)
         # each of the subgraph will have n^k vertices and all vertices that will not be changed
-        new_graph['num_nodes'] = sum([len(n) ** self.k for n in groups]) \
-                                 + graph['num_nodes'] - sum(vertices_in_components.values())
+        new_graph.num_nodes = sum([len(n) ** self.k for n in groups]) \
+                              + graph.num_nodes - sum(vertices_in_components.values())
 
         # get all subgraphs detected by BCC and convert them using k-WL algorithm
         processed_subgraphs = [self.graph_to_k_wl_graph(self.get_subgraph(graph, g), g) for g in groups]
@@ -288,7 +289,7 @@ class TransforToKWl(BaseTransform):
                 j = int(j)
                 if i in groups[sub_i] and j in already_processed_old_vertices:
                     if j in old_vertex_not_in_subgraphs:
-                        for i_v in range(starting_id, starting_id + subgraph['num_nodes']):
+                        for i_v in range(starting_id, starting_id + subgraph.num_nodes):
                             if i in subgraph_mapping[i_v - starting_id]:
                                 new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
                                 new_graph.edge_index[0].append(i_v)
@@ -298,7 +299,7 @@ class TransforToKWl(BaseTransform):
                             group_to_new_vertex_mapping[old_vertex_to_group_mapping[j]][0]
                         other_group_old_vertex_mapping = processed_subgraphs[old_vertex_to_group_mapping[j]][1]
                         size_of_other_group = len(group_to_new_vertex_mapping[old_vertex_to_group_mapping[j]])
-                        for i_v in range(starting_id, starting_id + subgraph['num_nodes']):
+                        for i_v in range(starting_id, starting_id + subgraph.num_nodes):
                             for j_v in range(other_group_starting_new_vertex_id,
                                              other_group_starting_new_vertex_id + size_of_other_group):
 
@@ -310,7 +311,7 @@ class TransforToKWl(BaseTransform):
                 # other way
                 elif j in groups[sub_i] and i in already_processed_old_vertices:
                     if i in old_vertex_not_in_subgraphs:
-                        for j_v in range(starting_id, starting_id + subgraph['num_nodes']):
+                        for j_v in range(starting_id, starting_id + subgraph.num_nodes):
                             if j in subgraph_mapping[j_v - starting_id]:
                                 new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
                                 new_graph.edge_index[0].append(old_vertex_to_new_vertex_mapping_no_subgraps[i])
@@ -320,7 +321,7 @@ class TransforToKWl(BaseTransform):
                             group_to_new_vertex_mapping[old_vertex_to_group_mapping[i]][0]
                         size_of_other_group = len(group_to_new_vertex_mapping[old_vertex_to_group_mapping[i]])
                         other_group_old_vertex_mapping = processed_subgraphs[old_vertex_to_group_mapping[i]][1]
-                        for j_v in range(starting_id, starting_id + subgraph['num_nodes']):
+                        for j_v in range(starting_id, starting_id + subgraph.num_nodes):
                             for i_v in range(other_group_starting_new_vertex_id,
                                              other_group_starting_new_vertex_id + size_of_other_group):
 
@@ -335,10 +336,19 @@ class TransforToKWl(BaseTransform):
         new_graph.edge_index = tensor(new_graph.edge_index)
         return new_graph
 
+    def add_dimensions_to_graph_without_modifying(self, data):
+        if data.edge_attr.shape[0] == 0:
+            data.edge_attr = empty((0, data.edge_attr.shape[1] + 1), dtype=int8)
+        else:
+            data.edge_attr = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
+
+        data.x = pad(data.x, pad=(1, 0, 0, 0), value=0)
+        return data
+
 
 if __name__ == '__main__':
-    with open('../debug/one_graph.pkl', 'rb') as file:
-        data = pickle.load(file)
+    # with open('../debug/one_graph.pkl', 'rb') as file:
+    #     data = pickle.load(file)
     transform = TransforToKWl(3)
     for i in range(70):
         transform.create_empty_graph(i)
