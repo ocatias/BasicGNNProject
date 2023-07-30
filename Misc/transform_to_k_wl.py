@@ -154,7 +154,7 @@ class TransforToKWl(BaseTransform):
         num_nodes = data.num_nodes
         self.vertices_num[num_nodes] += 1
         if num_nodes < 2 or data.edge_attr.shape[0] == 0:
-            self.add_dimensions_to_graph_without_modifying(data)
+            return self.add_dimensions_to_graph_without_modifying(data)
         if self.uses_turbo:
             return self.k_wl_turbo(data)
         else:
