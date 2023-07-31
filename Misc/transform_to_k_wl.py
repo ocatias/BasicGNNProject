@@ -220,9 +220,7 @@ class TransforToKWl(BaseTransform):
     def k_wl_turbo(self, graph):
         bf = BiconnectedComponents(graph)
         groups = bf.BCC()
-        for i in range(len(groups)):
-            if len(groups[i]) > self.max_group_size and self.max_group_size != -1:
-                groups.pop(i)
+        groups = [x for x in groups if len(x) <= self.max_group_size or self.max_group_size != -1]
         vertices_in_components = defaultdict(lambda: False)
         old_vertex_to_group_mapping = dict()
         for j, g in enumerate(groups):
