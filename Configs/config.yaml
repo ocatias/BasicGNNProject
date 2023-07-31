@@ -1,5 +1,5 @@
 {
-  "DATA_PATH" : "./datasets",
+  "DATA_PATH" : "/Data/obrichta/datasets",
   "RESULTS_PATH" : "./Results",
   "SPLITS_PATH" : "./datasets/splits",
   "TESTS_PATH" : "./Tests",
