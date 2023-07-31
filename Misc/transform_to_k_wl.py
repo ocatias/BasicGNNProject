@@ -20,7 +20,7 @@ from Misc.biconnected_components_finder import BiconnectedComponents
 
 
 class TransforToKWl(BaseTransform):
-    def __init__(self, k: int, turbo=False):
+    def __init__(self, k: int, turbo=False, max_group_size=40):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
@@ -28,6 +28,7 @@ class TransforToKWl(BaseTransform):
             self.graph_data_path = path.join('..', 'metadata', 'k_wl_graphs')
         else:
             self.graph_data_path = path.join('metadata', 'k_wl_graphs')
+        self.max_group_size = max_group_size
         self.range_k = list(range(k))
         self.matrices = {}
         # for k in range(20):
@@ -174,7 +175,7 @@ class TransforToKWl(BaseTransform):
             return None
 
     def __repr__(self) -> str:
-        return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})')
+        return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})(max_group_size={self.max_group_size})')
 
     def __del__(self):
         print('number of vertices in graphs', self.vertices_num)
@@ -219,9 +220,9 @@ class TransforToKWl(BaseTransform):
     def k_wl_turbo(self, graph):
         bf = BiconnectedComponents(graph)
         groups = bf.BCC()
-        for i in groups:
-            if len(i) > 40:
-                return self.add_dimensions_to_graph_without_modifying(graph)
+        for i in range(len(groups)):
+            if len(groups[i]) > self.max_group_size and self.max_group_size != -1:
+                groups.pop(i)
         vertices_in_components = defaultdict(lambda: False)
         old_vertex_to_group_mapping = dict()
         for j, g in enumerate(groups):

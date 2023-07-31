@@ -35,7 +35,7 @@ def get_transform(args, split=None):
         transforms.append(DropFeatures(args.emb_dim))
 
     if args.transform_k_wl:
-        transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo))
+        transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo, args.k_wl_turbo_max_group_size))
     return Compose(transforms)
 
 
