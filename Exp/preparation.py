@@ -62,8 +62,8 @@ def load_dataset(args, config):
     elif args.dataset.lower() in ["ogbg-molhiv", "ogbg-ppa", "ogbg-code2", "ogbg-molpcba", "ogbg-moltox21",
                                   "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv",
                                   "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
-        dataset = PygGraphPropPredDatasetCustom(root=dir, name=args.dataset.lower(), pre_transform=transform,
-                                                memory_intense_pre_transform=True)
+        dataset = PygGraphPropPredDataset(root=dir, name=args.dataset.lower(), pre_transform=transform)
+                                                #memory_intense_pre_transform=True)
         split_idx = dataset.get_idx_split()
         datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     elif args.dataset.lower() == "csl":
