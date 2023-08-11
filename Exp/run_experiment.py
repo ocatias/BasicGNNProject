@@ -310,7 +310,7 @@ def find_eval_params(args, grid, split):
     # In case we have restarted the script: check how many parameter configurations we have already tried
     previously_tested_params = glob.glob(os.path.join(hyperparams_path, "*.json"))
     nr_tries = min(args.candidates, len(grid)) - len(previously_tested_params)
-
+    print(nr_tries)
     for c in range(nr_tries):
         # Evaluate a parmeter configuration
 

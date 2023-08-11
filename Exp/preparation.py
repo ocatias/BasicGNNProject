@@ -26,6 +26,8 @@ def get_transform(args, split=None):
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
 
+    if args.transform_k_wl:
+        transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo, args.k_wl_turbo_max_group_size))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.dataset.lower() == "csl":
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
@@ -34,8 +36,6 @@ def get_transform(args, split=None):
     if args.do_drop_feat:
         transforms.append(DropFeatures(args.emb_dim))
 
-    if args.transform_k_wl:
-        transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo, args.k_wl_turbo_max_group_size))
     return Compose(transforms)
 
 
@@ -67,6 +67,7 @@ def load_dataset(args, config):
         split_idx = dataset.get_idx_split()
         datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     elif args.dataset.lower() == "csl":
+        #TODO try to get more than 0.1 acc on this
         all_idx = {}
         for section in ['train', 'val', 'test']:
             with open(os.path.join(config.SPLITS_PATH, "CSL", f"{section}.index"), 'r') as f:
