@@ -31,7 +31,7 @@ def get_transform(args, split=None):
     if args.transform_k_wl:
         transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo, args.k_wl_turbo_max_group_size))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
-    if args.dataset.lower() == "csl":
+    if args.dataset.lower() == "csl" and not args.transform_k_wl:
         transforms.append(PadNodeAttr(args.emb_dim))
 
     if args.do_drop_feat:
