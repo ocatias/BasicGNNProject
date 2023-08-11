@@ -110,6 +110,11 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
                         uses_k_wl_transform=uses_k_wl_transform), \
                 EdgeEncoder(args.emb_dim,
                             uses_k_wl_transform=uses_k_wl_transform)
+    elif args.dataset.lower() in ["csl"]:
+        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[1],
+                                   uses_k_wl_transform=uses_k_wl_transform)
+        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[1], uses_k_wl_transform=uses_k_wl_transform)
+
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
 
