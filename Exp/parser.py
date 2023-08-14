@@ -43,7 +43,7 @@ def parse_args(passed_args=None):
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of epochs to train (default: 100)')
     
-    parser.add_argument('--device', type=int, default=0,
+    parser.add_argument('--device', type=str, default="0",
                     help='Which gpu to use if any (default: 0)')
     parser.add_argument('--model', type=str, default='GIN',
                     help='Model to use (default: GIN; other options: GCN, MLP)')
