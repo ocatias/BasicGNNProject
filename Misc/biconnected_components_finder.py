@@ -14,7 +14,7 @@ class BiconnectedComponents:
         self.Time = 0
         # Count is number of biconnected components
         self.count = 0
-        for i in range(graph.edge_attr.shape[0]):
+        for i in range(graph.edge_index.shape[1]):
             self.addEdge(int(graph.edge_index[0][i]), int(graph.edge_index[1][i]))
         self.groups = []
 

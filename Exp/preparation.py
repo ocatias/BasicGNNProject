@@ -26,12 +26,11 @@ def get_transform(args, split=None):
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
 
-    if args.dataset.lower() == "csl":
-        transforms.append(AddZeroEdgeAttr(args.emb_dim))
     if args.transform_k_wl:
         transforms.append(TransforToKWl(args.transform_k_wl, args.k_wl_turbo, args.k_wl_turbo_max_group_size))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.dataset.lower() == "csl" and not args.transform_k_wl:
+        transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
 
     if args.do_drop_feat:
@@ -64,11 +63,11 @@ def load_dataset(args, config):
                                   "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv",
                                   "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
         dataset = PygGraphPropPredDataset(root=dir, name=args.dataset.lower(), pre_transform=transform)
-                                                #memory_intense_pre_transform=True)
+        # memory_intense_pre_transform=True)
         split_idx = dataset.get_idx_split()
         datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     elif args.dataset.lower() == "csl":
-        #TODO try to get more than 0.1 acc on this
+        # TODO try to get more than 0.1 acc on this
         all_idx = {}
         for section in ['train', 'val', 'test']:
             with open(os.path.join(config.SPLITS_PATH, "CSL", f"{section}.index"), 'r') as f:
@@ -111,9 +110,10 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
                 EdgeEncoder(args.emb_dim,
                             uses_k_wl_transform=uses_k_wl_transform)
     elif args.dataset.lower() in ["csl"]:
-        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[1,10],
+        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[100, 100, 100, 100, 100, 100, 100],
                                    uses_k_wl_transform=uses_k_wl_transform)
-        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[1,10], uses_k_wl_transform=uses_k_wl_transform)
+        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[100, 100, 100],
+                                   uses_k_wl_transform=uses_k_wl_transform)
 
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
