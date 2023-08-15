@@ -44,6 +44,8 @@ def print_progress(train_loss, val_loss, test_loss, metric_name, val_metric, tes
 def main(args):
     print(args)
     device = args.device
+    if device.isdecimal():
+        device = int(device)
     use_tracking = args.use_tracking
 
     set_seed(args.seed)

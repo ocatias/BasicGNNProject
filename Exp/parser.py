@@ -90,9 +90,11 @@ def parse_args(passed_args=None):
                         help="Transform dataset to k-WL dataset. Specify K here. K must be 2 or 3")
     parser.add_argument('--k_wl_turbo', type=int, default=0,
                         help="Whether to use the turbo version of k-WL")
-    parser.add_argument('--k_wl_turbo_max_group_size', type=int, default=0,
+    parser.add_argument('--k_wl_turbo_max_group_size', type=int, default=-1,
                         help="Maximum size of a group considered by k-WL turbo. For efficiency. "
                              "Large graphs may be too large to compute.")
+    parser.add_argument('--filter_data_max_graph_size', type=int, default=0,
+                        help="What is the maximum size of graph to be used in training. 0 means no filter.")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:

@@ -1,5 +1,8 @@
 import gc
 import pickle
+import tracemalloc
+from collections import defaultdict
+from typing import Callable, List, Union
 
 import pandas as pd
 import shutil, os
@@ -8,17 +11,62 @@ import os.path as osp
 import psutil
 import torch
 import numpy as np
-from torch_geometric.data import InMemoryDataset
+
+from torch_geometric.transforms import BaseTransform
+from torch_geometric.data import InMemoryDataset, Data, HeteroData
 from ogb.utils.url import decide_download, download_url, extract_zip
 from ogb.io.read_graph_pyg import read_graph_pyg
 from torch_geometric.data.separate import separate
+from torch_geometric.transforms import BaseTransform
 
 from Misc.utils import total_size
 
 
+# Code borrowed from latest pytorch geometric release. Not included in version I'm using.
+class ComposeFilters:
+    r"""Composes several filters together.
+
+    Args:
+        filters (List[Callable]): List of filters to compose.
+    """
+
+    def __init__(self, filters: List[Callable]):
+        self.filters = filters
+
+    def __call__(
+            self,
+            data: Union[Data, HeteroData],
+    ) -> bool:
+        for filter_fn in self.filters:
+            if isinstance(data, (list, tuple)):
+                if not all([filter_fn(d) for d in data]):
+                    return False
+            elif not filter_fn(data):
+                return False
+        return True
+
+    def __repr__(self) -> str:
+        args = [f'  {filter_fn}' for filter_fn in self.filters]
+        return '{}([\n{}\n])'.format(self.__class__.__name__, ',\n'.join(args))
+
+    def __len__(self):
+        return len(self.filters)
+
+
+class FilterMaxGraphSize():
+    def __init__(self, max_graph_size=0):
+        self.max_graph_size = max_graph_size
+
+    def __repr__(self):
+        return str(f'FilterMaxGraphSize={self.max_graph_size}')
+
+    def __call__(self, data):
+        return data.num_nodes <= self.max_graph_size
+
+
 class PygGraphPropPredDatasetCustom(InMemoryDataset):
     def __init__(self, name, root='dataset', transform=None, pre_transform=None, meta_dict=None,
-                 memory_intense_pre_transform=False):
+                 memory_intense_pre_transform=False, pre_filters=None):
         '''
             - name (str): name of the dataset
             - root (str): root directory to store the dataset folder
@@ -27,7 +75,7 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
             - meta_dict: dictionary that stores all the meta-information about data. Default is None,
                     but when something is passed, it uses its information. Useful for debugging for external contributers.
         '''
-
+        self.pre_filters = pre_filters
         self.name = name  ## original name, e.g., ogbg-molhiv
         self.memory_intense_pre_transform = memory_intense_pre_transform
 
@@ -75,7 +123,8 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
         self.__num_classes__ = int(self.meta_info['num classes'])
         self.binary = self.meta_info['binary'] == 'True'
 
-        super(PygGraphPropPredDatasetCustom, self).__init__(self.root, transform, pre_transform)
+        super(PygGraphPropPredDatasetCustom, self).__init__(self.root, transform, pre_transform,
+                                                            pre_filter=self.pre_filters)
 
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -93,6 +142,15 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
         valid_idx = pd.read_csv(osp.join(path, 'valid.csv.gz'), compression='gzip', header=None).values.T[0]
         test_idx = pd.read_csv(osp.join(path, 'test.csv.gz'), compression='gzip', header=None).values.T[0]
 
+        filtered = pd.read_csv(osp.join(path, 'filtered.csv.gz'), compression='gzip', header=None).values.T[0]
+        original_size = len(train_idx) + len(valid_idx) + len(test_idx)
+        non_filtered = list(range(original_size))
+        for i in reversed(filtered):
+            non_filtered.pop(i)
+        original_id_to_new = {k:v for v,k in enumerate(non_filtered)}
+        train_idx = [original_id_to_new[i] for i in train_idx if i not in filtered]
+        valid_idx = [original_id_to_new[i] for i in valid_idx if i not in filtered]
+        test_idx = [original_id_to_new[i] for i in test_idx if i not in filtered]
         return {'train': torch.tensor(train_idx, dtype=torch.long), 'valid': torch.tensor(valid_idx, dtype=torch.long),
                 'test': torch.tensor(test_idx, dtype=torch.long)}
 
@@ -173,7 +231,23 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                         g.y = torch.from_numpy(graph_label[i]).view(1, -1).to(torch.long)
                 else:
                     g.y = torch.from_numpy(graph_label[i]).view(1, -1).to(torch.float32)
+        if len(self.pre_filters) > 0:
+            data_list_to_be_removed = [i for i, d in enumerate(data_list) if not self.pre_filters(d)]
+            for i in reversed(data_list_to_be_removed):
+                data_list.pop(i)
+        else:
+            data_list_to_be_removed = []
 
+        split_type = self.meta_info['split']
+
+        split_path = osp.join(self.root, 'split', split_type)
+        pd.DataFrame({'col': data_list_to_be_removed}).to_csv(osp.join(split_path, 'filtered.csv.gz'),
+                                                              compression='gzip', header=False, index=False)
+
+        data_vertices_num = defaultdict(int)
+        for i in data_list:
+            data_vertices_num[i.num_nodes] += 1
+        print('data_vertices_num_before_transformation', data_vertices_num)
         if self.pre_transform is not None:
             if self.memory_intense_pre_transform:
                 increment_num = 100
@@ -187,7 +261,7 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                 while i < len(data_list):
                     data_part.append(self.pre_transform(data_list[i]))
                     # store the data if it takes more than 45G in RAM
-                    if process.memory_info().rss / 1024 ** 3 > 45:
+                    if process.memory_info().rss / 1024 ** 3 > 0.4 and len(data_part) > 100:
                         print(total_size(self.pre_transform))
                         print('using in GB', process.memory_info().rss / 1024 ** 3)
                         file = osp.join(dir_for_data, f'preprocessed_data_part{file_i}.pt')
@@ -208,7 +282,6 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                     data_list.extend(uncolate(data_p, slices_p))
             else:
                 data_list = [self.pre_transform(data) for data in data_list]
-
         data, slices = self.collate(data_list)
         print('Saving...')
         torch.save((data, slices), self.processed_paths[0])

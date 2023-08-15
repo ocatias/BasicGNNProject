@@ -11,7 +11,7 @@ from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims
 
-from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom
+from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom, FilterMaxGraphSize, ComposeFilters
 from Misc.transform_to_k_wl import TransforToKWl
 from Models.gnn import GNN
 from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
@@ -19,6 +19,13 @@ from Models.mlp import MLP
 from Misc.drop_features import DropFeatures
 from Misc.add_zero_edge_attr import AddZeroEdgeAttr
 from Misc.pad_node_attr import PadNodeAttr
+
+
+def get_filters(args):
+    filters = []
+    if args.filter_data_max_graph_size > 0:
+        filters.append(FilterMaxGraphSize(args.filter_data_max_graph_size))
+    return ComposeFilters(filters)
 
 
 def get_transform(args, split=None):
@@ -41,13 +48,12 @@ def get_transform(args, split=None):
 
 def load_dataset(args, config):
     transform = get_transform(args)
-
-    if transform is None:
-        dir = os.path.join(config.DATA_PATH, args.dataset, "Original")
-    else:
-        print(repr(transform))
-        trafo_str = repr(transform).replace("\n", "")
-        dir = os.path.join(config.DATA_PATH, args.dataset, trafo_str)
+    filter = get_filters(args)
+    print(repr(transform))
+    print(repr(filter))
+    trafo_str = repr(transform).replace("\n", "")
+    filter_str = repr(filter).replace("\n", "")
+    dir = os.path.join(config.DATA_PATH, args.dataset, filter_str, trafo_str)
 
     if args.dataset.lower() == "zinc":
         datasets = [ZINC(root=dir, subset=True, split=split, pre_transform=transform) for split in
@@ -62,7 +68,8 @@ def load_dataset(args, config):
     elif args.dataset.lower() in ["ogbg-molhiv", "ogbg-ppa", "ogbg-code2", "ogbg-molpcba", "ogbg-moltox21",
                                   "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv",
                                   "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
-        dataset = PygGraphPropPredDataset(root=dir, name=args.dataset.lower(), pre_transform=transform)
+        dataset = PygGraphPropPredDatasetCustom(root=dir, name=args.dataset.lower(), pre_transform=transform,
+                                                pre_filters=filter)
         # memory_intense_pre_transform=True)
         split_idx = dataset.get_idx_split()
         datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
