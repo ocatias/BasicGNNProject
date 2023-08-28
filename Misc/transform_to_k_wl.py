@@ -141,11 +141,11 @@ class TransforToKWl(BaseTransform):
             # for K larger than 3, I would suggest using hash from WL algorithm on each small subgraph
             # Using bool to detect where edge has value and where None is.
             # k_x = [sum([bool(old_adj[c[j - 1]][c[j]]) for j in range(len(c))]) + 1]
-
+            
             # New test version. Keeping in mind the order of vertices. Each binary place represents one edge
             k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
-            new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c]), dim=0, keepdim=True).values), 0)
+            new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c]), dim=0).values), 0)
 
         graph.x = stack(new_x)
         graph.num_nodes = len(all_combinations)
