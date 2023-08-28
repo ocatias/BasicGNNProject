@@ -11,7 +11,6 @@ import networkx as nx
 import torch
 import torch_geometric
 from matplotlib import pyplot as plt
-from sknetwork.data import house
 from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32, int8
 from torch.nn.functional import pad
 from torch_geometric.data import Data
@@ -376,6 +375,9 @@ if __name__ == '__main__':
     # with open('../debug/graph_20_21.pkl', 'rb') as file:
     #     data = pickle.load(file)
     transform = TransforToKWl(3)
+
+    from sknetwork.data import house
+
     data = transform.graph_from_adj(house())
     visualize(data, 'transformed_before')
     transformed_data, mapping = transform.graph_to_k_wl_graph(data, True)
