@@ -13,7 +13,7 @@ class DropFeatures(BaseTransform):
 
     def __call__(self, data: Data):
         data.x = torch.zeros([data.x.shape[0], 0], dtype=torch.float32)
-        data = self.one_hot_encoder(data)
+        # data = self.one_hot_encoder(data)
         data.edge_attr = torch.zeros([data.edge_attr.shape[0], self.emb_dim], dtype=torch.float32)
         return data
     

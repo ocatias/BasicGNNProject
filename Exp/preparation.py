@@ -30,6 +30,11 @@ def get_filters(args):
 
 def get_transform(args, split=None):
     transforms = []
+    if args.do_drop_feat:
+        emb_dim = args.emb_dim
+        if args.transform_k_wl:
+            emb_dim -= 1
+        transforms.append(DropFeatures(emb_dim))
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
 
@@ -39,9 +44,6 @@ def get_transform(args, split=None):
     if args.dataset.lower() == "csl" and not args.transform_k_wl:
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
-
-    if args.do_drop_feat:
-        transforms.append(DropFeatures(args.emb_dim))
 
     return Compose(transforms)
 
