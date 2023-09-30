@@ -14,10 +14,10 @@ default_color_edge = 'black'
 max_value_color = 'magenta'
 
 
-def visualize(data, name, labels=None, colors=None, v_feat_dim=None, e_feat_dim=None):
+def visualize(data, name, labels=None, colors=None, v_feat_dim=None, e_feat_dim=None, figsize=(30,30)):
     G = nx.DiGraph(directed=True)
     plt.clf()
-    plt.figure(figsize=(30, 30), dpi=300)
+    plt.figure(figsize=figsize, dpi=100)
     if labels is None:
         labels = defaultdict(lambda x: x)
     elif isinstance(labels, list):
@@ -30,7 +30,6 @@ def visualize(data, name, labels=None, colors=None, v_feat_dim=None, e_feat_dim=
     for i, edge in enumerate(edge_list):
         c = default_color_edge
         if (e_feat_dim is not None):
-            print(data.edge_attr.shape)
             if len(data.edge_attr.shape) == 1:
                 c = cololrs_edges[data.edge_attr[i]]
             else:

@@ -5,6 +5,7 @@ from collections import defaultdict
 from copy import deepcopy
 from itertools import product, combinations
 from os import path
+from pprint import pprint
 from statistics import mean
 
 import networkx as nx
@@ -102,6 +103,13 @@ class TransforToKWl(BaseTransform):
                 len_edge_attr = graph.edge_attr.shape[1]
         else:
             len_edge_attr = 0
+        if graph.x is not None:
+            if len(graph.x.shape) == 1:
+                len_vert_attr = 1
+            else:
+                len_vert_attr = graph.x.shape[1]
+        else:
+            len_vert_attr = 0
         if vert_num < 30:
             if vert_num not in self.matrices:
                 self.matrices[vert_num] = self.create_empty_graph(vert_num)
@@ -127,10 +135,23 @@ class TransforToKWl(BaseTransform):
                 if len(selected_attrs) == 0:
                     new_edge_attr[i] = cat((tensor([new_edge_attr[i]]),
                                             zeros((len_edge_attr), dtype=int32)))
+                elif len(selected_attrs) == 1:
+                    if len_edge_attr > 1:
+                        new_edge_attr[i] = cat((tensor([new_edge_attr[i]]),
+                                                selected_attrs[0],
+                                                ))
+                    else:
+                        new_edge_attr[i] = cat((tensor([new_edge_attr[i]]), tensor(selected_attrs)))
+
                 else:
-                    new_edge_attr[i] = cat((tensor([new_edge_attr[i]]),
-                                            mode(stack(selected_attrs),
-                                                 dim=0).values))
+                    if len_edge_attr > 1:
+                        new_edge_attr[i] = cat((tensor([new_edge_attr[i]]),
+                                                mode(stack(selected_attrs),
+                                                     dim=0).values))
+                    else:
+                        new_edge_attr[i] = cat((tensor([new_edge_attr[i]]),
+                                                mode(stack(selected_attrs)).values.reshape(1)))
+
         else:
             new_edge_attr = [tensor([i]) for i in new_edge_attr]
         for i, c in enumerate(all_combinations):
@@ -145,7 +166,12 @@ class TransforToKWl(BaseTransform):
             # New test version. Keeping in mind the order of vertices. Each binary place represents one edge
             k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
-            new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c]), dim=0).values), 0)
+            if len_vert_attr > 1:
+                new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c]), dim=0).values), 0)
+            elif len_vert_attr == 1:
+                new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c])).values.reshape(1)))
+            else:
+                new_x[i] = tensor(k_x)
 
         graph.x = stack(new_x)
         graph.num_nodes = len(all_combinations)
@@ -374,11 +400,18 @@ class TransforToKWl(BaseTransform):
 if __name__ == '__main__':
     # with open('../debug/graph_20_21.pkl', 'rb') as file:
     #     data = pickle.load(file)
-    transform = TransforToKWl(3)
+    transform = TransforToKWl(2)
 
     from sknetwork.data import house
 
     data = transform.graph_from_adj(house())
-    visualize(data, 'transformed_before')
+    visualize(data, 'transformed_before', labels=[0, 1, 2, 3, 4], figsize=(3, 3))
     transformed_data, mapping = transform.graph_to_k_wl_graph(data, True)
-    visualize(transformed_data, 'transformed_turbo', labels=mapping, e_feat_dim=0)
+    pprint(list(zip(mapping, transformed_data.x)))
+    visualize(transformed_data, 'transformed_k=2', labels=mapping, e_feat_dim=0)
+
+# TODO try on zinc dataset
+# TODO try concatenating features instead of mode
+# TODO try setting up embeddings for
+
+# TODO CSL dataset look at triange counts
