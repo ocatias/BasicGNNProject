@@ -44,6 +44,7 @@ class TransforToKWl(BaseTransform):
         self.vertices_reduction = defaultdict(lambda: defaultdict(int))
         self.k_wl_vertices_num = defaultdict(int)
         self.processed_num = 0
+        self.agg_function_features_name = agg_function_features
         if agg_function_features is None or agg_function_features == 'mode':
             self.agg_function_features = lambda x: mode(stack(x), dim=0).values
             self.num_edge_repeat = 1
@@ -54,10 +55,11 @@ class TransforToKWl(BaseTransform):
             self.agg_function_features = self.safe_cat
         self.nan_tensor_edge_features = None
 
-    def safe_cat(self, selected_attrs: list):
-        if len(selected_attrs) < self.num_edge_repeat:
+    def safe_cat(self, selected_attrs: list, edge=True):
+        if edge and len(selected_attrs) < self.num_edge_repeat:
             for _ in range(self.num_edge_repeat - len(selected_attrs)):
                 selected_attrs.append(self.nan_tensor_edge_features)
+
         return cat(selected_attrs)
 
     def create_empty_graph(self, n):
@@ -194,10 +196,10 @@ class TransforToKWl(BaseTransform):
             # New test version. Keeping in mind the order of vertices. Each binary place represents one edge
             k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
-            if len_vert_attr > 1:
-                new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c]), dim=0).values), 0)
-            elif len_vert_attr == 1:
-                new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c])).values.reshape(1)))
+            if len_vert_attr > 0:
+                new_x[i] = cat((tensor(k_x), self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c]), ), 0)
+            # elif len_vert_attr == 1:
+            #     new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c])).values.reshape(1)))
             else:
                 new_x[i] = tensor(k_x)
 
@@ -249,7 +251,8 @@ class TransforToKWl(BaseTransform):
             return None
 
     def __repr__(self) -> str:
-        return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})(max_group_size={self.max_group_size})')
+        return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})'
+                f'(max_group_size={self.max_group_size})(feature_pooling={self.agg_function_features_name})')
 
     def __del__(self):
         print('number of vertices in graphs', self.vertices_num)
