@@ -39,11 +39,17 @@ class EdgeEncoder(torch.nn.Module):
             emb = torch.nn.Embedding(dim, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
-        print('bond_embedding_list',self.bond_embedding_list)
+        print('bond_embedding_list', self.bond_embedding_list)
+        self.len_embedding_list = len(self.bond_embedding_list)
+
     def forward(self, edge_attr):
         bond_embedding = 0
         for i in range(edge_attr.shape[1]):
-            bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
+            if i > self.len_embedding_list:
+                # the first position is not repeating
+                bond_embedding += self.bond_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](edge_attr[:, i])
+            else:
+                bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
         return bond_embedding
 
 
