@@ -161,7 +161,7 @@ class TransforToKWl(BaseTransform):
                     #     print(x.shape)
                     # print(selected_attrs)
                     new_edge_attr[i] = cat((tensor([new_edge_attr[i]]),
-                                            self.agg_function_features(selected_attrs)))
+                                            self.agg_function_features(selected_attrs, True)))
                     # print('new_edge_attr[i]', new_edge_attr[i])
                 # elif len(selected_attrs) == 1:
                 #
@@ -197,7 +197,9 @@ class TransforToKWl(BaseTransform):
             k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if len_vert_attr > 0:
-                new_x[i] = cat((tensor(k_x), self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c]), ), 0)
+                new_x[i] = cat(
+                    (tensor(k_x), self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c], False),),
+                    0)
             # elif len_vert_attr == 1:
             #     new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c])).values.reshape(1)))
             else:
@@ -420,10 +422,14 @@ class TransforToKWl(BaseTransform):
             data.edge_attr = empty((0, data.edge_attr.shape[1] + 1), dtype=int8)
         else:
             data.edge_attr = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
-        if self.num_edge_repeat > 1:
-            data.edge_attr = pad(data.edge_attr, pad=(0, (self.num_edge_repeat - 1) * (data.edge_attr.shape[1] - 1)),
-                                 value=0)
         data.x = pad(data.x, pad=(1, 0, 0, 0), value=0)
+        if self.agg_function_features_name == 'cat':
+            data.edge_attr = pad(data.edge_attr,
+                                 pad=(0, (self.num_edge_repeat - 1) * (data.edge_attr.shape[1] - 1)),
+                                 value=0)
+            data.x = pad(data.x,
+                         pad=(0, (self.k - 1) * (data.x.shape[1] - 1)),
+                         value=0)
         return data
 
     def graph_from_adj(self, adj):

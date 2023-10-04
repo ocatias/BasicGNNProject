@@ -16,11 +16,16 @@ class NodeEncoder(torch.nn.Module):
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
 
+        self.len_embedding_list = len(self.atom_embedding_list)
     def forward(self, x):
         x_embedding = 0
         x = x.long()
         for i in range(x.shape[1]):
-            x_embedding += self.atom_embedding_list[i](x[:, i])
+            if i >= self.len_embedding_list:
+                # the first position is not repeating
+                x_embedding += self.atom_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](x[:, i])
+            else:
+                x_embedding += self.atom_embedding_list[i](x[:, i])
 
         return x_embedding
 
@@ -45,7 +50,7 @@ class EdgeEncoder(torch.nn.Module):
     def forward(self, edge_attr):
         bond_embedding = 0
         for i in range(edge_attr.shape[1]):
-            if i > self.len_embedding_list:
+            if i >= self.len_embedding_list:
                 # the first position is not repeating
                 bond_embedding += self.bond_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](edge_attr[:, i])
             else:
