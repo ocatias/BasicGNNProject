@@ -97,6 +97,8 @@ def parse_args(passed_args=None):
                         help="Pooling function for edge and vertex features. Currently supporting 'mean' and 'cat'")
     parser.add_argument('--filter_data_max_graph_size', type=int, default=0,
                         help="What is the maximum size of graph to be used in training. 0 means no filter.")
+    parser.add_argument('--add_num_triangles', type=int, default=0,
+                        help="Add number of triangles in graph to all nodes as node attribute.")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:

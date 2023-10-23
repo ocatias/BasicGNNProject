@@ -23,6 +23,35 @@ from Misc.biconnected_components_finder import BiconnectedComponents
 from Misc.graph_visualizations import visualize
 
 
+def get_number_of_triangles(adj):
+    count = 0
+    n = len(adj)
+    for i in range(n):
+        for j in range(n):
+            if (adj[i][j] == 1):
+                for k in range(n):
+                    if (adj[j][k] == 1 and adj[k][i] == 1):
+                        count += 1
+
+    return count // 6
+
+
+def graph_from_adj(adj):
+    graph = from_scipy_sparse_matrix(adj)
+    return Data(x=tensor([0] * adj.shape[0]), edge_index=graph[0], edge_attr=graph[1].long(), y=tensor([1]))
+
+
+def create_adjacency_from_graph(graph):
+    adj = [[None for j in range(graph.num_nodes)] for i in range(graph.num_nodes)]
+    if graph.edge_attr is not None:
+        attrs = graph['edge_attr'].tolist()
+    else:
+        attrs = defaultdict(lambda: 1)
+    for i, x in enumerate(transpose(graph['edge_index'], 0, 1)):
+        adj[x[0]][x[1]] = attrs[i]
+    return adj
+
+
 class TransforToKWl(BaseTransform):
     def __init__(self, k: int, turbo=False, max_group_size=40, agg_function_features: str = 'cat'):
         if not 2 <= k <= 3:
@@ -35,14 +64,14 @@ class TransforToKWl(BaseTransform):
         self.max_group_size = max_group_size
         self.range_k = list(range(k))
         self.matrices = {}
-        # for k in range(20):
-        #     self.matrices[k] = (self.create_empty_graph(k))
         self.uses_turbo = turbo
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
         self.vertices_num = defaultdict(int)
         self.vertices_reduction = defaultdict(lambda: defaultdict(int))
         self.k_wl_vertices_num = defaultdict(int)
+        self.stats_isomorphism_indexes = []
+        self.stats_triangle_counts = []
         self.processed_num = 0
         self.agg_function_features_name = agg_function_features
         if agg_function_features is None or agg_function_features == 'mode':
@@ -100,16 +129,6 @@ class TransforToKWl(BaseTransform):
             return None
         return diff_pos + 1
 
-    def create_adjacency_from_graph(self, graph, size):
-        adj = [[None for j in range(size)] for i in range(size)]
-        if graph.edge_attr is not None:
-            attrs = graph['edge_attr'].tolist()
-        else:
-            attrs = defaultdict(lambda: 1)
-        for i, x in enumerate(transpose(graph['edge_index'], 0, 1)):
-            adj[x[0]][x[1]] = attrs[i]
-        return adj
-
     def graph_to_k_wl_graph(self, graph, return_mapping=None):
         vert_num = graph.num_nodes
         num_edges = graph.edge_index.shape[1]
@@ -136,7 +155,7 @@ class TransforToKWl(BaseTransform):
         else:
             all_combinations, new_edges, new_edge_attr = self.create_empty_graph(vert_num)
 
-        old_adj = self.create_adjacency_from_graph(graph, vert_num)
+        old_adj = create_adjacency_from_graph(graph)
         new_x = [0] * len(all_combinations)
         if len_edge_attr > 0:
             for i in range(len(new_edge_attr)):
@@ -184,6 +203,7 @@ class TransforToKWl(BaseTransform):
 
         else:
             new_edge_attr = [tensor([i]) for i in new_edge_attr]
+        self.stats_isomorphism_indexes.append(defaultdict(int))
         for i, c in enumerate(all_combinations):
             # TODO: try keeping the order of vertices for the isomorphism test
             # Old version
@@ -195,6 +215,7 @@ class TransforToKWl(BaseTransform):
 
             # New test version. Keeping in mind the order of vertices. Each binary place represents one edge
             k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
+            self.stats_isomorphism_indexes[-1][k_x[0]] += 1
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if len_vert_attr > 0:
                 new_x[i] = cat(
@@ -227,6 +248,7 @@ class TransforToKWl(BaseTransform):
         return graph
 
     def __call__(self, data: Data) -> Data:
+        self.stats_triangle_counts.append(get_number_of_triangles(create_adjacency_from_graph(data)))
         self.processed_num += 1
         if self.processed_num % 100 == 0:
             print(f'transform to k-WL -- done {self.processed_num}')
@@ -262,6 +284,7 @@ class TransforToKWl(BaseTransform):
         print('number of graphs reduced to what', self.vertices_reduction)
         print('average_num_of_vertices', self.average_num_of_vertices)
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
+        print('number of triangles and isomorphism:', list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
 
     def get_subgraph(self, graph, vertices):
         new_graph = copy.deepcopy(graph)
@@ -431,10 +454,6 @@ class TransforToKWl(BaseTransform):
                          pad=(0, (self.k - 1) * (data.x.shape[1] - 1)),
                          value=0)
         return data
-
-    def graph_from_adj(self, adj):
-        graph = from_scipy_sparse_matrix(adj)
-        return Data(x=tensor([0] * adj.shape[0]), edge_index=graph[0], edge_attr=graph[1].long(), y=tensor([1]))
 
 
 if __name__ == '__main__':

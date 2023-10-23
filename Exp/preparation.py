@@ -11,6 +11,7 @@ from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims
 
+from Misc.count_triangles import CountTriangles
 from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom, FilterMaxGraphSize, ComposeFilters
 from Misc.transform_to_k_wl import TransforToKWl
 from Models.gnn import GNN
@@ -37,13 +38,14 @@ def get_transform(args, split=None):
         transforms.append(DropFeatures(emb_dim))
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
-
     if args.transform_k_wl:
         transforms.append(TransforToKWl(k=args.transform_k_wl,
                                         turbo=args.k_wl_turbo,
                                         max_group_size=args.k_wl_turbo_max_group_size,
                                         agg_function_features=args.k_wl_pool_function))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
+    if args.add_num_triangles:
+        transforms.append(CountTriangles())
     if args.dataset.lower() == "csl" and not args.transform_k_wl:
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
