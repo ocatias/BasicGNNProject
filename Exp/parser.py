@@ -93,8 +93,8 @@ def parse_args(passed_args=None):
     parser.add_argument('--k_wl_turbo_max_group_size', type=int, default=-1,
                         help="Maximum size of a group considered by k-WL turbo. For efficiency. "
                              "Large graphs may be too large to compute.")
-    parser.add_argument('--k_wl_pool_function', type=str, default='mean',
-                        help="Pooling function for edge and vertex features. Currently supporting 'mean' and 'cat'")
+    parser.add_argument('--k_wl_pool_function', type=str, default='mode',
+                        help="Pooling function for edge and vertex features. Currently supporting 'mode' and 'cat'")
     parser.add_argument('--filter_data_max_graph_size', type=int, default=0,
                         help="What is the maximum size of graph to be used in training. 0 means no filter.")
     parser.add_argument('--add_num_triangles', type=int, default=0,
