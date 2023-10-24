@@ -36,7 +36,7 @@ class NodeEncoder(torch.nn.Module):
                     x_embedding += self.atom_embedding_list[i](x[:, i])
 
         if self.k_wl_separate:
-            return cat(k_wl_embedding, x_embedding)
+            return cat((k_wl_embedding, x_embedding))
         else:
             return x_embedding
 
@@ -72,7 +72,7 @@ class EdgeEncoder(torch.nn.Module):
                 else:
                     bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
         if self.k_wl_separate:
-            return cat(k_wl_embedding, bond_embedding)
+            return cat((k_wl_embedding, bond_embedding))
         else:
             return bond_embedding
 
