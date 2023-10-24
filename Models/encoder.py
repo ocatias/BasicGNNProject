@@ -1,12 +1,16 @@
 import torch
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
+from torch import cat
 
 
 class NodeEncoder(torch.nn.Module):
 
-    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=False):
+    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=False, k_wl_separate=False):
         super(NodeEncoder, self).__init__()
         self.atom_embedding_list = torch.nn.ModuleList()
+        if uses_k_wl_transform and k_wl_separate:
+            emb_dim = emb_dim // 2
+            self.k_wl_separate = True
         if feature_dims is None:
             feature_dims = get_atom_feature_dims()
         if uses_k_wl_transform:
@@ -17,24 +21,33 @@ class NodeEncoder(torch.nn.Module):
             self.atom_embedding_list.append(emb)
 
         self.len_embedding_list = len(self.atom_embedding_list)
+
     def forward(self, x):
         x_embedding = 0
         x = x.long()
         for i in range(x.shape[1]):
-            if i >= self.len_embedding_list:
-                # the first position is not repeating
-                x_embedding += self.atom_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](x[:, i])
+            if i == 0 and self.k_wl_separate:
+                k_wl_embedding = self.atom_embedding_list[i](x[:, i])
             else:
-                x_embedding += self.atom_embedding_list[i](x[:, i])
+                if i >= self.len_embedding_list:
+                    # the first position is not repeating
+                    x_embedding += self.atom_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](x[:, i])
+                else:
+                    x_embedding += self.atom_embedding_list[i](x[:, i])
 
-        return x_embedding
+        if self.k_wl_separate:
+            return cat(k_wl_embedding, x_embedding)
+        else:
+            return x_embedding
 
 
 class EdgeEncoder(torch.nn.Module):
-    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=False):
+    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=False, k_wl_separate=False):
         super(EdgeEncoder, self).__init__()
         self.bond_embedding_list = torch.nn.ModuleList()
-
+        if uses_k_wl_transform and k_wl_separate:
+            emb_dim = emb_dim // 2
+            self.k_wl_separate = True
         if feature_dims is None:
             feature_dims = get_bond_feature_dims()
 
@@ -50,12 +63,18 @@ class EdgeEncoder(torch.nn.Module):
     def forward(self, edge_attr):
         bond_embedding = 0
         for i in range(edge_attr.shape[1]):
-            if i >= self.len_embedding_list:
-                # the first position is not repeating
-                bond_embedding += self.bond_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](edge_attr[:, i])
+            if i == 0 and self.k_wl_separate:
+                k_wl_embedding = self.bond_embedding_list[i](edge_attr[:, i])
             else:
-                bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
-        return bond_embedding
+                if i >= self.len_embedding_list:
+                    # the first position is not repeating
+                    bond_embedding += self.bond_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](edge_attr[:, i])
+                else:
+                    bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
+        if self.k_wl_separate:
+            return cat(k_wl_embedding, bond_embedding)
+        else:
+            return bond_embedding
 
 
 class EgoEncoder(torch.nn.Module):

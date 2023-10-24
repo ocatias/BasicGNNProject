@@ -10,6 +10,7 @@ from copy import deepcopy
 from Misc.config import config
 from Misc.utils import transform_dict_to_args_list
 
+
 def parse_args(passed_args=None):
     """
     Parse command line arguments. Allows either a config file (via "--config path/to/config.yaml")
@@ -23,11 +24,10 @@ def parse_args(passed_args=None):
     # Config file to load
     parser.add_argument('--config', dest='config_file', type=argparse.FileType(mode='r'),
                         help='Path to a config file that should be used for this experiment. '
-                        + 'CANNOT be combined with explicit arguments')
+                             + 'CANNOT be combined with explicit arguments')
 
     parser.add_argument('--tracking', type=int, default=config.use_wandb_tracking,
                         help=f'If 0 runs without tracking (Default: {str(config.use_wandb_tracking)})')
-
 
     # Parameters to be set directly
     parser.add_argument('--seed', type=int, default=42,
@@ -35,22 +35,22 @@ def parse_args(passed_args=None):
     parser.add_argument('--split', type=int, default=0,
                         help='Split for cross validation (default: 0)')
     parser.add_argument('--dataset', type=str, default="ZINC",
-                            help='Dataset name (default: ZINC; other options: CSL and most datasets from ogb, see ogb documentation)')
+                        help='Dataset name (default: ZINC; other options: CSL and most datasets from ogb, see ogb documentation)')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate (default: 0.001)')
     parser.add_argument('--batch_size', type=int, default=32,
                         help='Input batch size for training (default: 32)')
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of epochs to train (default: 100)')
-    
+
     parser.add_argument('--device', type=str, default="0",
-                    help='Which gpu to use if any (default: 0)')
+                        help='Which gpu to use if any (default: 0)')
     parser.add_argument('--model', type=str, default='GIN',
-                    help='Model to use (default: GIN; other options: GCN, MLP)')
-                    
+                        help='Model to use (default: GIN; other options: GCN, MLP)')
+
     # LR SCHEDULER
     parser.add_argument('--lr_scheduler', type=str, default='ReduceLROnPlateau',
-                    help='Learning rate decay scheduler (default: ReduceLROnPlateau; other options: StepLR, None; For details see PyTorch documentation)')
+                        help='Learning rate decay scheduler (default: ReduceLROnPlateau; other options: StepLR, None; For details see PyTorch documentation)')
     parser.add_argument('--lr_scheduler_decay_rate', type=float, default=0.5,
                         help='Strength of lr decay (default: 0.5)')
 
@@ -99,12 +99,15 @@ def parse_args(passed_args=None):
                         help="What is the maximum size of graph to be used in training. 0 means no filter.")
     parser.add_argument('--add_num_triangles', type=int, default=0,
                         help="Add number of triangles in graph to all nodes as node attribute.")
+    parser.add_argument('--k_wl_separate_embedding', type=int, default=0,
+                        help="Whether to use separate embedding dimensions for k-wl "
+                             "computed data or add them to feature embeddings.")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:
         args = parser.parse_args()
     else:
-        args = parser.parse_args(transform_dict_to_args_list(passed_args))        
+        args = parser.parse_args(transform_dict_to_args_list(passed_args))
 
     args.__dict__["use_tracking"] = args.tracking == 1
     args.__dict__["use_virtual_node"] = args.virtual_node == 1
@@ -118,6 +121,6 @@ def parse_args(passed_args=None):
         delattr(args, 'config_file')
         arg_dict = args.__dict__
         for key, value in data.items():
-                arg_dict[key] = value
+            arg_dict[key] = value
 
     return args
