@@ -102,7 +102,6 @@ def load_dataset(args, config):
     test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
 
     del transform
-    exit()
     return train_loader, val_loader, test_loader
 
 

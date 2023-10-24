@@ -162,8 +162,7 @@ class TransforToKWl(BaseTransform):
 
         old_adj = create_adjacency_from_graph(graph)
         new_x = [0] * len(all_combinations)
-        # TODO remove this false
-        if len_edge_attr > 0 and False:
+        if len_edge_attr > 0:
             for i in range(len(new_edge_attr)):
                 c1 = all_combinations[new_edges[0][i]]
                 c2 = all_combinations[new_edges[1][i]]
@@ -252,12 +251,6 @@ class TransforToKWl(BaseTransform):
         return graph
 
     def __call__(self, data: Data) -> Data:
-        #TODO remove this saving
-        num_triangles = get_number_of_triangles(data)
-        with open(path.join('debug',f'csl_{str(num_triangles)}_{str(len(self.stats_triangle_counts))}.pkl'), 'wb') as f:
-            pickle.dump(data, f)
-
-        # TODO end remove here
         self.stats_triangle_counts.append(get_number_of_triangles(data))
         self.processed_num += 1
         if self.processed_num % 100 == 0:
@@ -296,7 +289,7 @@ class TransforToKWl(BaseTransform):
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
         print('number of triangles and isomorphism:',
               list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
-        with open(path.join('Results', f'isomorphism_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
+        with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
                   'wt') as f:
             f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
 
@@ -484,4 +477,6 @@ if __name__ == '__main__':
     # pprint(list(zip(mapping, transformed_data.x)))
     # visualize(transformed_data, 'transformed_k=2', labels=mapping, e_feat_dim=0)
 
-
+# TODO compare the embeddings of the first class in CSL dataset with other classes. The first class is the only one we
+#  can differentiate from the other classes based on the isomorphic numbers
+#  The other classes should have the same embedding. First class should have completely different embedding
