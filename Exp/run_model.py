@@ -119,9 +119,11 @@ def main(args):
 
     if eval_name in ["mae", "rmse (ogb)"]:
         best_val_epoch = np.argmin(val_results[eval_name])
+        best_test_epoch = np.argmin(test_result[eval_name])
         mode = "min"
     else:
         best_val_epoch = np.argmax(val_results[eval_name])
+        best_test_epoch = np.argmax(test_result[eval_name])
         mode = "max"
 
     loss_train, loss_val, loss_test = train_results['total_loss'][best_val_epoch], val_results['total_loss'][
@@ -139,7 +141,13 @@ def main(args):
             "Final/Val/Loss": loss_val,
             f"Final/Val/{eval_name}": result_val,
             "Final/Test/Loss": loss_test,
-            f"Final/Test/{eval_name}": result_test})
+            f"Final/Test/{eval_name}": result_test,
+            "BestTest/Val/Loss": val_results['total_loss'][best_test_epoch],
+            f"BestTest/Val/{eval_name}": val_results[eval_name][best_test_epoch],
+            "BestTest/Test/Loss": val_results['total_loss'][best_test_epoch],
+            f"BestTest/Test/{eval_name}": test_result[eval_name][best_test_epoch],
+
+        })
 
         wandb.finish()
 
