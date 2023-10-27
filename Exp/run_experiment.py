@@ -360,7 +360,7 @@ def main(passed_args=None):
     with open(args.grid_file, 'r') as file:
         grid_raw = yaml.safe_load(file)
     if args.device != -1:
-        grid_raw['device'] = args.device
+        grid_raw['device'] = [args.device]
     grid = list(ParameterGrid(grid_raw))
     directory = get_directory(args)
     create_directories(directory, args)
