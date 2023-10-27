@@ -100,6 +100,8 @@ def parse_args(passed_args):
                         help="Number of times to repeat the final model training")
     parser.add_argument('--folds', type=int, default="1",
                         help='Number of folds, setting this to something other than 1, means we will treat this as cross validation')
+    parser.add_argument('--device', type=int, default=-1,
+                        help='Overwrites the setting for device from grid')
 
     if passed_args is None:
         return parser.parse_args(passed_args)
@@ -357,8 +359,9 @@ def main(passed_args=None):
 
     with open(args.grid_file, 'r') as file:
         grid_raw = yaml.safe_load(file)
+    if args.device != -1:
+        grid_raw['device'] = args.device
     grid = list(ParameterGrid(grid_raw))
-
     directory = get_directory(args)
     create_directories(directory, args)
 
