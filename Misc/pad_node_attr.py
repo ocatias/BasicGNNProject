@@ -1,4 +1,5 @@
 import torch.nn.functional as F
+from torch import tensor, zeros
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 
@@ -13,7 +14,10 @@ class PadNodeAttr(BaseTransform):
         self.node_attr_size = node_attr_size
 
     def __call__(self, data: Data) -> Data:
-        data.x = F.pad(data.x, (0, self.node_attr_size - data.x.shape[1]), "constant", 0)
+        if data.x is not None:
+            data.x = F.pad(data.x, (0, self.node_attr_size - data.x.shape[1]), "constant", 0)
+        else:
+            data.x = zeros((data.num_nodes, self.node_attr_size))
         return data
 
     def __repr__(self) -> str:

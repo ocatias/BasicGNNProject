@@ -1,9 +1,11 @@
 import os
 import csv
+import random
+from glob import escape
 
 import torch
 from torch_geometric.loader import DataLoader
-from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset
+from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, TUDataset
 import torch.optim as optim
 from torch_geometric.utils import to_undirected
 from torch_geometric.transforms import ToUndirected, Compose, OneHotDegree
@@ -14,6 +16,7 @@ from ogb.utils.features import get_atom_feature_dims
 from Misc.count_triangles import CountTriangles
 from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom, FilterMaxGraphSize, ComposeFilters
 from Misc.transform_to_k_wl import TransforToKWl
+from Misc.tu_dataset_custom import TUDatasetCustom
 from Models.gnn import GNN
 from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
 from Models.mlp import MLP
@@ -46,11 +49,16 @@ def get_transform(args, split=None):
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())
-    if args.dataset.lower() == "csl" and not args.transform_k_wl:
+    if args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi',
+                                'enzymes'] and not args.transform_k_wl:
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
 
     return Compose(transforms)
+
+
+def escape_dir(s):
+    return s.replace("\n", "").replace(' ', '').replace('=', '-').replace(',', '-').replace('[', '').replace(']', '')
 
 
 def load_dataset(args, config):
@@ -58,8 +66,8 @@ def load_dataset(args, config):
     filter = get_filters(args)
     print(repr(transform))
     print(repr(filter))
-    trafo_str = repr(transform).replace("\n", "")
-    filter_str = repr(filter).replace("\n", "")
+    trafo_str = escape_dir(repr(transform))
+    filter_str = escape_dir(repr(filter))
     dir = os.path.join(config.DATA_PATH, args.dataset, filter_str, trafo_str)
 
     if args.dataset.lower() == "zinc":
@@ -94,6 +102,23 @@ def load_dataset(args, config):
         dataset = PlanarSATPairsDataset(name=args.dataset, root=dir, pre_transform=transform)
         split_dict = dataset.separate_data(args.seed, args.split)
         datasets = [split_dict["train"], split_dict["valid"], split_dict["test"]]
+    elif args.dataset.lower() in ["ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
+        print('dir', dir)
+        dataset = TUDatasetCustom(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
+                                  pre_filter=filter, use_node_attr=True, use_edge_attr=True)
+
+        split_idx = {'train': [], 'valid': [], 'test': []}
+        random.seed(42)
+        for i in range(len(dataset)):
+            x = dataset.get(i)
+            if random.random() < 0.5:
+                split_idx['train'].append(i)
+            elif random.random() < 0.5:
+                split_idx['valid'].append(i)
+            else:
+                split_idx['test'].append(i)
+
+        datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     else:
         raise NotImplementedError("Unknown dataset")
 
@@ -125,11 +150,11 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
         node_encoder, edge_encoder = \
             NodeEncoder(args.emb_dim, feature_dims=node_feature_dims,
                         uses_k_wl_transform=uses_k_wl_transform,
-                                   k_wl_separate=k_wl_separate_embedding), \
+                        k_wl_separate=k_wl_separate_embedding), \
                 EdgeEncoder(args.emb_dim,
                             uses_k_wl_transform=uses_k_wl_transform,
-                                   k_wl_separate=k_wl_separate_embedding)
-    elif args.dataset.lower() in ["csl"]:
+                            k_wl_separate=k_wl_separate_embedding)
+    elif args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[100, 100, 100, 100, 100, 100, 100],
                                    uses_k_wl_transform=uses_k_wl_transform,
                                    k_wl_separate=k_wl_separate_embedding)
@@ -191,8 +216,13 @@ def get_loss(args):
     elif args.dataset.lower() in ["cifar10", "csl", "exp", "cexp"]:
         loss = torch.nn.CrossEntropyLoss()
         metric = "accuracy"
-    elif args.dataset in ["ogbg-molhiv", "ogbg-moltox21", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox",
-                          "ogbg-molsider", "ogbg-moltoxcast"]:
+    elif args.dataset.lower() in [ "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary',
+                                  'imdb-multi', 'enzymes']:
+        loss = torch.nn.BCEWithLogitsLoss()
+        metric = "accuracy"
+    elif args.dataset.lower() in ["ogbg-molhiv", "ogbg-moltox21", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox"
+                                                                                                  "ogbg-molsider",
+                                  "ogbg-moltoxcast", ]:
         loss = torch.nn.BCEWithLogitsLoss()
         metric = "rocauc (ogb)"
         metric_method = get_evaluator(args.dataset)
