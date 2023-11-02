@@ -287,8 +287,8 @@ class TransforToKWl(BaseTransform):
         print('number of graphs reduced to what', self.vertices_reduction)
         print('average_num_of_vertices', self.average_num_of_vertices)
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
-        print('number of triangles and isomorphism:',
-              list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
+        # print('number of triangles and isomorphism:',
+        #       list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
         with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
                   'wt') as f:
             f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
