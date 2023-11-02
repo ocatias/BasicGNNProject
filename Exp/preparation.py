@@ -104,7 +104,7 @@ def load_dataset(args, config):
         datasets = [split_dict["train"], split_dict["valid"], split_dict["test"]]
     elif args.dataset.lower() in ["ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
         print('dir', dir)
-        dataset = TUDatasetCustom(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
+        dataset = TUDataset(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
                                   pre_filter=filter, use_node_attr=True, use_edge_attr=True)
 
         split_idx = {'train': [], 'valid': [], 'test': []}
