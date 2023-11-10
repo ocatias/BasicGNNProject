@@ -45,7 +45,8 @@ def get_transform(args, split=None):
         transforms.append(TransforToKWl(k=args.transform_k_wl,
                                         turbo=args.k_wl_turbo,
                                         max_group_size=args.k_wl_turbo_max_group_size,
-                                        agg_function_features=args.k_wl_pool_function))
+                                        agg_function_features=args.k_wl_pool_function,
+                                        set_based=bool(args.k_wl_set_based)))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())

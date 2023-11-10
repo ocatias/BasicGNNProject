@@ -55,11 +55,16 @@ def create_adjacency_from_graph(graph):
     return adj
 
 
+def sort_tuple(t):
+    return tuple(sorted(t))
+
+
 class TransforToKWl(BaseTransform):
-    def __init__(self, k: int, turbo=False, max_group_size=40, agg_function_features: str = 'cat'):
+    def __init__(self, k: int, turbo=False, max_group_size=40, agg_function_features: str = 'cat', set_based=False):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
+        self.set_based = set_based
         if __name__ == '__main__':
             self.graph_data_path = path.join('..', 'metadata', 'k_wl_graphs')
         else:
@@ -96,7 +101,40 @@ class TransforToKWl(BaseTransform):
 
         return cat(selected_attrs)
 
-    def create_empty_graph(self, n):
+    def create_empty_graph_set(self, graph):
+        adj = create_adjacency_from_graph(graph)
+        n = len(adj)
+        if n == 0:
+            return [], [[]]
+        all_combinations = list(combinations(list(range(n)), self.k))
+        combinations_index = {c: i for i, c in enumerate(all_combinations)}
+        edges = [[], []]
+        edge_attributes = []
+        used_edges = set()
+        for i, e in enumerate(zip(*graph.edge_index.tolist())):
+            e = sort_tuple(e)
+            if e in used_edges:
+                continue
+            else:
+                used_edges.add(e)
+            l = [x for x in list(range(n)) if x not in set(e)]
+            for x in list(combinations(l, self.k - 1)):
+                # i_0 = all_combinations.index(sort_tuple(((e[0],) + x)))
+                i_0 = combinations_index[sort_tuple(((e[0],) + x))]
+                # i_1 = all_combinations.index(sort_tuple(((e[1],) + x)))
+                i_1 = combinations_index[sort_tuple(((e[1],) + x))]
+                edges[0].append(i_0)
+                edges[1].append(i_1)
+                edge_attributes.append(1)
+                edges[0].append(i_1)
+                edges[1].append(i_0)
+                edge_attributes.append(1)
+        return all_combinations, edges, edge_attributes
+
+    def create_empty_graph_tuple(self, graph):
+
+        adj = create_adjacency_from_graph(graph)
+        n = len(adj)
         if n == 0:
             return [], [[]]
         saved_graph = self.load_empty_graph(n)
@@ -121,6 +159,41 @@ class TransforToKWl(BaseTransform):
         # TODO: add check for number of edges
         self.save_empty_graph((all_combinations, edges, edge_attributes), n)
         return all_combinations, edges, edge_attributes
+
+    def has_common_edge_2(self, c1, c2, adj):
+        if len(set(c1).intersection(set(c2))) == self.k - 1:
+            diff = list(set(c1).symmetric_difference(set(c2)))
+            if adj[diff[0]][diff[1]] is not None:
+                return 1
+            else:
+                return None
+        else:
+            return None
+
+    def has_common_edge(self, c1, c2, adj):
+        # check this
+        if len(set(c1).union(set(c2))) == self.k + 1:
+            s = 0
+            for i in c1:
+                for j in c2:
+                    if i != j:
+                        if adj[i][j] is not None:
+                            s += 1
+            if 1 in c1 and 1 in c2:
+                print(c1, c2, s)
+            if s == 0:
+                return None
+            else:
+                return s
+        else:
+            return None
+
+    def has_common_no_order(self, c1, c2):
+        #  v2 only return if they have an edge in the original graph between c1 and c2
+        if len(set(c1).union(set(c2))) == self.k + 1:
+            return 1
+        else:
+            return None
 
     def has_common(self, c1, c2):
         diff_num = 0
@@ -153,14 +226,16 @@ class TransforToKWl(BaseTransform):
                 len_vert_attr = graph.x.shape[1]
         else:
             len_vert_attr = 0
-        if vert_num < 30:
-            if vert_num not in self.matrices:
-                self.matrices[vert_num] = self.create_empty_graph(vert_num)
-            all_combinations, new_edges, new_edge_attr = deepcopy(self.matrices[vert_num])
-        else:
-            all_combinations, new_edges, new_edge_attr = self.create_empty_graph(vert_num)
-
+        # if vert_num < 30:
+        #     if vert_num not in self.matrices:
+        #         self.matrices[vert_num] = self.create_empty_graph(vert_num)
+        #     all_combinations, new_edges, new_edge_attr = deepcopy(self.matrices[vert_num])
+        # else:
         old_adj = create_adjacency_from_graph(graph)
+        if self.set_based:
+            all_combinations, new_edges, new_edge_attr = self.create_empty_graph_set(graph)
+        else:
+            all_combinations, new_edges, new_edge_attr = self.create_empty_graph_tuple(graph)
         new_x = [0] * len(all_combinations)
         if len_edge_attr > 0:
             for i in range(len(new_edge_attr)):
@@ -209,15 +284,16 @@ class TransforToKWl(BaseTransform):
             new_edge_attr = [tensor([i]) for i in new_edge_attr]
         self.stats_isomorphism_indexes.append(defaultdict(int))
         for i, c in enumerate(all_combinations):
-            # Old version
-            # works only for K==2 and K==3
-            # sum of number of edges in the subgraph plus 1
-            # for K larger than 3, I would suggest using hash from WL algorithm on each small subgraph
-            # Using bool to detect where edge has value and where None is.
-            # k_x = [sum([bool(old_adj[c[j - 1]][c[j]]) for j in range(len(c))]) + 1]
-
-            # New test version. Keeping in mind the order of vertices. Each binary place represents one edge
-            k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
+            if self.set_based:
+                # Set version
+                # works only for K==2 and K==3
+                # sum of number of edges in the subgraph plus 1
+                # for K larger than 3, I would suggest using hash from WL algorithm on each small subgraph
+                # Using bool to detect where edge has value and where None is.
+                k_x = [sum([bool(old_adj[c[j - 1]][c[j]]) for j in range(len(c))]) + 1]
+            else:
+                # Tuple version. Keeping in mind the order of vertices. Each binary place represents one edge
+                k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
             self.stats_isomorphism_indexes[-1][k_x[0]] += 1
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if len_vert_attr > 0:
@@ -279,7 +355,8 @@ class TransforToKWl(BaseTransform):
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})'
-                f'(max_group_size={self.max_group_size})(feature_pooling={self.agg_function_features_name})')
+                f'(max_group_size={self.max_group_size})(feature_pooling={self.agg_function_features_name})'
+                f'(set_based={self.set_based})')
 
     def __del__(self):
         print('number of vertices in graphs', self.vertices_num)
@@ -464,15 +541,15 @@ class TransforToKWl(BaseTransform):
 
 
 if __name__ == '__main__':
-    with open('../debug/graph_20_21.pkl', 'rb') as file:
+    with open('../debug/imdb_bin_136.pkl', 'rb') as file:
         data = pickle.load(file)
     transform = TransforToKWl(3)
 
     from sknetwork.data import house
 
-    data = transform.graph_from_adj(house())
+    # data = transform.graph_from_adj(house())
     visualize(data, 'transformed_before')  # , labels=[0, 1, 2, 3, 4], figsize=(3, 3))
-    transformed_data, mapping = transform(data)
+    transformed_data, mapping = transform.graph_to_k_wl_graph(data, True)
     # print(transformed_data.edge_attr)
     # pprint(list(zip(mapping, transformed_data.x)))
     # visualize(transformed_data, 'transformed_k=2', labels=mapping, e_feat_dim=0)
