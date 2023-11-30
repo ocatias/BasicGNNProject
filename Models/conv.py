@@ -1,4 +1,5 @@
 import torch
+from torch import cat
 from torch_geometric.nn import MessagePassing
 import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool, global_add_pool
@@ -7,6 +8,13 @@ from torch_geometric.utils import degree
 from torch_geometric.nn import GATv2Conv
 
 import math
+
+from torch_scatter import scatter_mean
+
+from Misc.transform_to_k_wl import k_wl_sequential_layers
+from Misc.utils import num_connected_components
+from Models.encoder import KWlEmbeddings, NodeEncoder
+from Models.utils import avg_pool_custom
 
 
 ### GAT
@@ -39,14 +47,14 @@ import math
 
 ### GIN convolution along the graph structure
 class GINConv(MessagePassing):
-    def __init__(self, emb_dim, edge_encoder):
+    def __init__(self, emb_dim, edge_encoder, addition_input_dim=0):
         '''
             emb_dim (int): node embedding dimensionality
         '''
 
         super(GINConv, self).__init__(aggr="add")
-
-        self.mlp = torch.nn.Sequential(torch.nn.Linear(emb_dim, 2 * emb_dim), torch.nn.BatchNorm1d(2 * emb_dim),
+        self.mlp = torch.nn.Sequential(torch.nn.Linear(emb_dim + addition_input_dim, 2 * emb_dim),
+                                       torch.nn.BatchNorm1d(2 * emb_dim),
                                        torch.nn.ReLU(), torch.nn.Linear(2 * emb_dim, emb_dim))
         self.eps = torch.nn.Parameter(torch.Tensor([0]))
         self.edge_encoder = edge_encoder
@@ -58,7 +66,8 @@ class GINConv(MessagePassing):
         return out
 
     def message(self, x_j, edge_attr):
-        # print(f"{x_j.shape}, {edge_attr.shape}")
+        if x_j.shape != edge_attr.shape:
+            edge_attr = cat([edge_attr, edge_attr], dim=1)
         return F.relu(x_j + edge_attr)
 
     def update(self, aggr_out):
@@ -105,7 +114,7 @@ class GNN_node(torch.nn.Module):
     """
 
     def __init__(self, num_layer, emb_dim, drop_ratio=0.5, JK="last", residual=False, gnn_type='gin',
-                 node_encoder=lambda x: x, edge_encoder=lambda x: x):
+                 node_encoder=lambda x: x, edge_encoder=lambda x: x, k_wl=0, sequential_k_wl=False):
         '''
             emb_dim (int): node embedding dimensionality
             num_layer (int): number of GNN message passing layers
@@ -116,6 +125,8 @@ class GNN_node(torch.nn.Module):
         self.num_layer = num_layer
         self.drop_ratio = drop_ratio
         self.JK = JK
+        self.sequential_k_wl = sequential_k_wl
+        self.k_wl = k_wl
         ### add residual connection or not
         self.residual = residual
 
@@ -129,10 +140,19 @@ class GNN_node(torch.nn.Module):
         self.batch_norms = torch.nn.ModuleList()
         self.gnn_type = gnn_type
         self.edge_encoder = edge_encoder
-
+        if self.sequential_k_wl:
+            self.k_wl_embeddings =[NodeEncoder(emb_dim, feature_dims=[10]*10) for k in range(2, self.k_wl + 1)]  #[torch.nn.Embedding(k ** 2, emb_dim) for k in range(2, self.k_wl + 1)]
+            # [torch.nn.init.xavier_uniform_(i.weight.data) for i in self.k_wl_embeddings]
+            for e in self.k_wl_embeddings:
+                e.to(0)
+            #
         for layer in range(num_layer):
+            if self.sequential_k_wl and layer in k_wl_sequential_layers(num_layer, self.k_wl):
+                addition_input_dim = emb_dim
+            else:
+                addition_input_dim = 0
             if gnn_type == 'gin':
-                self.convs.append(GINConv(emb_dim, edge_encoder))
+                self.convs.append(GINConv(emb_dim, edge_encoder, addition_input_dim=addition_input_dim))
             elif gnn_type == 'gcn':
                 self.convs.append(GCNConv(emb_dim, edge_encoder))
             elif gnn_type == 'gat':
@@ -143,8 +163,23 @@ class GNN_node(torch.nn.Module):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
     def forward(self, batched_data):
+        batched_data.to(0)
         x, edge_index, edge_attr, batch = batched_data.x, batched_data.edge_index, batched_data.edge_attr, batched_data.batch
+        k_wl_layers = []
+        if self.sequential_k_wl:
+            seq_x = [batched_data[f'x_{i}'].type(torch.IntTensor).to(device=0) for i in range(2, self.k_wl + 1)]
+            seq_x = [self.k_wl_embeddings[i](x_).squeeze() for i, x_ in enumerate(seq_x)]
+            seq_edge_index = [batched_data[f'edge_index_{i}'].type(torch.LongTensor).to(device=0) for i in range(2, self.k_wl + 1)]
+            seq_edge_attr = [batched_data[f'edge_attr_{i}'].type(torch.IntTensor).to(device=0) for i in range(2, self.k_wl + 1)]
+            seq_assignment_index = [batched_data[f'assignment_index_{i}'].type(torch.LongTensor).to(device=0) for i in range(2, self.k_wl + 1)]
+            k_wl_layers = k_wl_sequential_layers(self.num_layer, self.k_wl)
+            seq_batch = [batched_data.batch]
+            if 'batch_2' in batched_data:
+                seq_batch.append(batched_data.batch_2)
+            if 'batch_3' in batched_data:
+                seq_batch.append(batched_data.batch_3)
 
+            k_wl_h = []
         if self.gnn_type == "gat":
             edge_attr = self.edge_encoder(edge_attr)
         ### computing input node embedding
@@ -153,16 +188,26 @@ class GNN_node(torch.nn.Module):
         if self.gnn_type == "gin":
             x = x.long()
         edge_attr = edge_attr.long()
-
         h_list = [self.node_encoder(x)]
+        current_k_wl = 0
+        h = h_list[0]
         for layer in range(self.num_layer):
-
-            h = self.convs[layer](h_list[layer], edge_index, edge_attr)
+            if layer in k_wl_layers:
+                current_k_wl += 1
+                k_wl_h.append(scatter_mean(h, seq_batch[k_wl_layers.index(layer)], dim=0))
+                h = avg_pool_custom(h, seq_assignment_index[k_wl_layers.index(layer)])
+                h = torch.cat([h, seq_x[k_wl_layers.index(layer)]], dim=1)
+            h = self.convs[layer](h,
+                                  edge_index if current_k_wl == 0 else seq_edge_index[current_k_wl - 1],
+                                  edge_attr if current_k_wl == 0 else seq_edge_attr[current_k_wl - 1])
             h = self.batch_norms[layer](h)
 
             if layer == self.num_layer - 1:
                 # remove relu for the last layer
                 h = F.dropout(h, self.drop_ratio, training=self.training)
+                if self.sequential_k_wl:
+                    k_wl_h.append(scatter_mean(h, seq_batch[-1], dim=0))
+                    h = torch.cat(k_wl_h, dim=1)
             else:
                 h = F.dropout(F.relu(h), self.drop_ratio, training=self.training)
 

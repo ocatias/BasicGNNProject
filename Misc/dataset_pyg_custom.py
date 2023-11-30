@@ -147,7 +147,7 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
         non_filtered = list(range(original_size))
         for i in reversed(filtered):
             non_filtered.pop(i)
-        original_id_to_new = {k:v for v,k in enumerate(non_filtered)}
+        original_id_to_new = {k: v for v, k in enumerate(non_filtered)}
         train_idx = [original_id_to_new[i] for i in train_idx if i not in filtered]
         valid_idx = [original_id_to_new[i] for i in valid_idx if i not in filtered]
         test_idx = [original_id_to_new[i] for i in test_idx if i not in filtered]

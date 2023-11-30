@@ -4,7 +4,6 @@ import random
 from glob import escape
 
 import torch
-from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, TUDataset
 import torch.optim as optim
 from torch_geometric.utils import to_undirected
@@ -14,9 +13,9 @@ from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims
 
 from Misc.count_triangles import CountTriangles
+from Misc.dataloader import DataLoader
 from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom, FilterMaxGraphSize, ComposeFilters
 from Misc.transform_to_k_wl import TransforToKWl
-from Misc.tu_dataset_custom import TUDatasetCustom
 from Models.gnn import GNN
 from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
 from Models.mlp import MLP
@@ -42,11 +41,19 @@ def get_transform(args, split=None):
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
     if args.transform_k_wl:
+        if args.sequential_k_wl and int(args.transform_k_wl) == 3:
+            transforms.append(TransforToKWl(k=2,
+                                            turbo=args.k_wl_turbo,
+                                            max_group_size=args.k_wl_turbo_max_group_size,
+                                            agg_function_features=args.k_wl_pool_function,
+                                            set_based=bool(args.k_wl_set_based),
+                                            modify=not bool(args.sequential_k_wl)))
         transforms.append(TransforToKWl(k=args.transform_k_wl,
                                         turbo=args.k_wl_turbo,
                                         max_group_size=args.k_wl_turbo_max_group_size,
                                         agg_function_features=args.k_wl_pool_function,
-                                        set_based=bool(args.k_wl_set_based)))
+                                        set_based=bool(args.k_wl_set_based),
+                                        modify=not bool(args.sequential_k_wl)))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())
@@ -106,7 +113,7 @@ def load_dataset(args, config):
     elif args.dataset.lower() in ["ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
         print('dir', dir)
         dataset = TUDataset(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
-                                  pre_filter=filter, use_node_attr=True, use_edge_attr=True)
+                            pre_filter=filter, use_node_attr=True, use_edge_attr=True)
 
         split_idx = {'train': [], 'valid': [], 'test': []}
         random.seed(42)
@@ -170,7 +177,8 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
         return GNN(num_classes, num_tasks, args.num_layers, args.emb_dim,
                    gnn_type=model, virtual_node=args.use_virtual_node, drop_ratio=args.drop_out, JK="last",
                    graph_pooling=args.pooling, edge_encoder=edge_encoder, node_encoder=node_encoder,
-                   use_node_encoder=args.use_node_encoder, num_mlp_layers=args.num_mlp_layers)
+                   use_node_encoder=args.use_node_encoder, num_mlp_layers=args.num_mlp_layers,
+                   sequential_k_wl=args.sequential_k_wl, k_wl=args.transform_k_wl)
     elif args.model.lower() == "mlp":
         return MLP(num_features=num_vertex_features, num_layers=args.num_layers, hidden=args.emb_dim,
                    num_classes=num_classes, num_tasks=num_tasks, dropout_rate=args.drop_out, graph_pooling=args.pooling)
@@ -217,7 +225,7 @@ def get_loss(args):
     elif args.dataset.lower() in ["cifar10", "csl", "exp", "cexp"]:
         loss = torch.nn.CrossEntropyLoss()
         metric = "accuracy"
-    elif args.dataset.lower() in [ "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary',
+    elif args.dataset.lower() in ["ptc_mr", "ptc_fm", 'mutag', 'imdb-binary',
                                   'imdb-multi', 'enzymes']:
         loss = torch.nn.BCEWithLogitsLoss()
         metric = "accuracy"

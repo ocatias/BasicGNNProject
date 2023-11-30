@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool, global_add_pool
 from torch.nn import BatchNorm1d as BN, LayerNorm as LN, Identity
+from torch_scatter import scatter_mean
 
 
 def get_nonlinearity(nonlinearity, return_module=True):
@@ -45,3 +46,7 @@ def get_graph_norm(norm):
         return Identity
     else:
         raise ValueError(f'Graph Normalisation {norm} not currently supported')
+
+def avg_pool_custom(x, assignment):
+    row, col = assignment
+    return scatter_mean(x[row], col, dim=0)

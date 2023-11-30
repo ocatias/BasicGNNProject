@@ -93,7 +93,7 @@ def main(args):
         train_results.append(train_result)
         val_results.append(val_result)
         test_results.append(test_result)
-
+        print(test_result)
         print_progress(train_result['total_loss'], val_result['total_loss'], test_result['total_loss'], eval_name,
                        val_result[eval_name], test_result[eval_name])
 

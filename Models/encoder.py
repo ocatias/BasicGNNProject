@@ -114,3 +114,16 @@ class ZincAtomEncoder(torch.nn.Module):
             return torch.hstack((x[:, :self.num_added], self.enc(x[:, self.num_added:].squeeze())))
         else:
             return self.enc(x.squeeze())
+
+
+class KWlEmbeddings(torch.nn.Module):
+    def __init__(self, k, emb_dim):
+        super(KWlEmbeddings, self).__init__()
+        self.emb = torch.nn.Embedding(k ** 2, emb_dim)
+        self.emb.to(0)
+        self.emb_dim = emb_dim
+        torch.nn.init.xavier_uniform_(self.emb.weight.data)
+
+    def forward(self, x):
+        return self.emb(x)
+

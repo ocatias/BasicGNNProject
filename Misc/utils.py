@@ -2,6 +2,8 @@ from collections import deque
 from itertools import chain
 from sys import getsizeof, stderr
 
+import networkx as nx
+
 
 def edge_tensor_to_list(edge_tensor):
     edge_list = []
@@ -72,3 +74,12 @@ def total_size(o, handlers={}, verbose=False):
         return s
 
     return sizeof(o)
+
+def num_connected_components(data):
+    G = nx.Graph()
+
+    edge_list = edge_tensor_to_list(data.edge_index)
+
+    for i, edge in enumerate(edge_list):
+        G.add_edge(edge[0], edge[1])
+    return nx.number_connected_components(G)

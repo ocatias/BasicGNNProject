@@ -105,6 +105,9 @@ def parse_args(passed_args=None):
     parser.add_argument('--k_wl_set_based', type=int, default=0,
                         help="Whether to use set based k-wl or tuple based. Set based requires "
                              "several magnitudes less computation power")
+    parser.add_argument('--sequential_k_wl', type=int, default=0,
+                        help="Whether to use sequential k-wl. Sequential k-wl will inititalize GNN with k=1 (MPNN) "
+                             "and then use all k up to selected k. Need num gnn layers of at least k")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:
