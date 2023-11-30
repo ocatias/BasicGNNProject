@@ -4,7 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from itertools import product, combinations
-from math import factorial, comb
+from math import factorial, comb, ceil
 from os import path
 from statistics import mean
 
@@ -23,8 +23,11 @@ from Misc.graph_visualizations import visualize
 
 
 def k_wl_sequential_layers(n, k):
-    d = n // k
-    return list(range(d, n, d))[:k - 1]
+    d = ceil(n / k)
+    o = list(range(d, n, d))[:k - 1]
+    if len(o) < k -1:
+        o.append(n-1)
+    return o
 
 
 def get_number_of_triangles(graph):
