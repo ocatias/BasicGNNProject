@@ -20,7 +20,7 @@ from Models.gnn import GNN
 from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
 from Models.mlp import MLP
 from Misc.drop_features import DropFeatures
-from Misc.add_zero_edge_attr import AddZeroEdgeAttr
+from Misc.add_zero_edge_attr import AddZeroEdgeAttr, AddZeroNodeAttr, DebugTransform
 from Misc.pad_node_attr import PadNodeAttr
 
 
@@ -54,6 +54,8 @@ def get_transform(args, split=None):
                                         agg_function_features=args.k_wl_pool_function,
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl)))
+        if args.sequential_k_wl:
+            transforms.append(AddZeroNodeAttr(1))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())

@@ -321,8 +321,8 @@ class TransforToKWl(BaseTransform):
         graph['edge_index' + ("" if self.modify else f"_{self.k}")] = new_edge_index
         graph['edge_attr' + ("" if self.modify else f"_{self.k}")] = new_edge_attr
 
-        if 'x' not in graph.keys:
-            graph['x'] = tensor([[1.0]] * graph.num_nodes)
+        # if 'x' not in graph.keys:
+        #     graph['x'] = tensor([[1.0]] * graph.num_nodes)
         if 'edge_attr' not in graph.keys:
             graph['edge_attr'] = tensor([[1.0]] * num_edges)
         self.average_num_of_vertices = mean((self.average_num_of_vertices, vert_num))
@@ -543,8 +543,6 @@ class TransforToKWl(BaseTransform):
         data['x' + ("" if self.modify else f"_{self.k}")] = pad(data.x, pad=(1, 0, 0, 0), value=0)
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
-            if 'x' not in data.keys:
-                data['x'] = tensor([1.0] * data.num_nodes)
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))])
         if self.agg_function_features_name == 'cat':
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr,

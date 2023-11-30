@@ -164,17 +164,16 @@ class GNN_node(torch.nn.Module):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
     def forward(self, batched_data):
-        batched_data.to(0)
         x, edge_index, edge_attr, batch = batched_data.x, batched_data.edge_index, batched_data.edge_attr, batched_data.batch
         k_wl_layers = []
         if self.sequential_k_wl:
-            seq_x = [batched_data[f'x_{i}'].type(torch.IntTensor).to(device=0) for i in range(2, self.k_wl + 1)]
+            seq_x = [batched_data[f'x_{i}'].int() for i in range(2, self.k_wl + 1)]
             seq_x = [self.k_wl_embeddings[i](x_).squeeze() for i, x_ in enumerate(seq_x)]
-            seq_edge_index = [batched_data[f'edge_index_{i}'].type(torch.LongTensor).to(device=0) for i in
+            seq_edge_index = [batched_data[f'edge_index_{i}'].long() for i in
                               range(2, self.k_wl + 1)]
-            seq_edge_attr = [batched_data[f'edge_attr_{i}'].type(torch.IntTensor).to(device=0) for i in
+            seq_edge_attr = [batched_data[f'edge_attr_{i}'].int() for i in
                              range(2, self.k_wl + 1)]
-            seq_assignment_index = [batched_data[f'assignment_index_{i}'].type(torch.LongTensor).to(device=0) for i in
+            seq_assignment_index = [batched_data[f'assignment_index_{i}'].long() for i in
                                     range(2, self.k_wl + 1)]
             k_wl_layers = k_wl_sequential_layers(self.num_layer, self.k_wl)
             seq_batch = [batched_data.batch]
