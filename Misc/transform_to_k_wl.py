@@ -540,7 +540,7 @@ class TransforToKWl(BaseTransform):
         data['x' + ("" if self.modify else f"_{self.k}")] = pad(data.x, pad=(1, 0, 0, 0), value=0)
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
-            if 'x' not in data.keys():
+            if 'x' not in data.keys:
                 data['x'] = tensor([1.0] * data.num_nodes)
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))])
         if self.agg_function_features_name == 'cat':
