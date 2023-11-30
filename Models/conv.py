@@ -141,7 +141,8 @@ class GNN_node(torch.nn.Module):
         self.gnn_type = gnn_type
         self.edge_encoder = edge_encoder
         if self.sequential_k_wl:
-            self.k_wl_embeddings =[NodeEncoder(emb_dim, feature_dims=[10]*10) for k in range(2, self.k_wl + 1)]  #[torch.nn.Embedding(k ** 2, emb_dim) for k in range(2, self.k_wl + 1)]
+            self.k_wl_embeddings = [NodeEncoder(emb_dim, feature_dims=[10] * 10) for k in range(2,
+                                                                                                self.k_wl + 1)]  # [torch.nn.Embedding(k ** 2, emb_dim) for k in range(2, self.k_wl + 1)]
             # [torch.nn.init.xavier_uniform_(i.weight.data) for i in self.k_wl_embeddings]
             for e in self.k_wl_embeddings:
                 e.to(0)
@@ -169,9 +170,12 @@ class GNN_node(torch.nn.Module):
         if self.sequential_k_wl:
             seq_x = [batched_data[f'x_{i}'].type(torch.IntTensor).to(device=0) for i in range(2, self.k_wl + 1)]
             seq_x = [self.k_wl_embeddings[i](x_).squeeze() for i, x_ in enumerate(seq_x)]
-            seq_edge_index = [batched_data[f'edge_index_{i}'].type(torch.LongTensor).to(device=0) for i in range(2, self.k_wl + 1)]
-            seq_edge_attr = [batched_data[f'edge_attr_{i}'].type(torch.IntTensor).to(device=0) for i in range(2, self.k_wl + 1)]
-            seq_assignment_index = [batched_data[f'assignment_index_{i}'].type(torch.LongTensor).to(device=0) for i in range(2, self.k_wl + 1)]
+            seq_edge_index = [batched_data[f'edge_index_{i}'].type(torch.LongTensor).to(device=0) for i in
+                              range(2, self.k_wl + 1)]
+            seq_edge_attr = [batched_data[f'edge_attr_{i}'].type(torch.IntTensor).to(device=0) for i in
+                             range(2, self.k_wl + 1)]
+            seq_assignment_index = [batched_data[f'assignment_index_{i}'].type(torch.LongTensor).to(device=0) for i in
+                                    range(2, self.k_wl + 1)]
             k_wl_layers = k_wl_sequential_layers(self.num_layer, self.k_wl)
             seq_batch = [batched_data.batch]
             if 'batch_2' in batched_data:
@@ -195,7 +199,8 @@ class GNN_node(torch.nn.Module):
             if layer in k_wl_layers:
                 current_k_wl += 1
                 k_wl_h.append(scatter_mean(h, seq_batch[k_wl_layers.index(layer)], dim=0))
-                h = avg_pool_custom(h, seq_assignment_index[k_wl_layers.index(layer)])
+                # TODO check why this worked with the wrong h instead of h_list
+                h = avg_pool_custom(h_list[k_wl_layers[0] - 1], seq_assignment_index[k_wl_layers.index(layer)])
                 h = torch.cat([h, seq_x[k_wl_layers.index(layer)]], dim=1)
             h = self.convs[layer](h,
                                   edge_index if current_k_wl == 0 else seq_edge_index[current_k_wl - 1],

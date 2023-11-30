@@ -73,7 +73,7 @@ class GNN(torch.nn.Module):
     def forward(self, batched_data):
         h_node = self.gnn_node(batched_data)
         if not self.sequential_k_wl:
-            h_graph = self.pool(h_node, batched_data.batch_3)
+            h_graph = self.pool(h_node, batched_data.batch)
         else:
             h_graph = h_node
 
