@@ -323,8 +323,8 @@ class TransforToKWl(BaseTransform):
 
         # if 'x' not in graph.keys:
         #     graph['x'] = tensor([[1.0]] * graph.num_nodes)
-        if 'edge_attr' not in graph.keys:
-            graph['edge_attr'] = tensor([[1.0]] * num_edges)
+        # if 'edge_attr' not in graph.keys:
+        #     graph['edge_attr'] = tensor([[1.0]] * num_edges)
         self.average_num_of_vertices = mean((self.average_num_of_vertices, vert_num))
         self.average_num_of_new_vertices = mean((self.average_num_of_new_vertices, vert_num ** self.k))
         if return_mapping is not None:

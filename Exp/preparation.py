@@ -33,6 +33,7 @@ def get_filters(args):
 
 def get_transform(args, split=None):
     transforms = []
+
     if args.do_drop_feat:
         emb_dim = args.emb_dim
         if args.transform_k_wl:
@@ -56,6 +57,7 @@ def get_transform(args, split=None):
                                         modify=not bool(args.sequential_k_wl)))
         if args.sequential_k_wl:
             transforms.append(AddZeroNodeAttr(1))
+            transforms.append(AddZeroEdgeAttr(1))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())
