@@ -17,12 +17,11 @@ class NodeEncoder(torch.nn.Module):
         if feature_dims is None:
             feature_dims = get_atom_feature_dims()
         if uses_k_wl_transform:
-            feature_dims = [10] + feature_dims
+            feature_dims = [100] + feature_dims
         for i, dim in enumerate(feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim_local)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
-
         self.len_embedding_list = len(self.atom_embedding_list)
 
     def forward(self, x):
@@ -37,7 +36,6 @@ class NodeEncoder(torch.nn.Module):
                     x_embedding += self.atom_embedding_list[(i - 1) % (self.len_embedding_list - 1) + 1](x[:, i])
                 else:
                     x_embedding += self.atom_embedding_list[i](x[:, i])
-
         if self.k_wl_separate:
             if not isinstance(x_embedding, int):
                 return cat((k_wl_embedding, x_embedding), dim=1)

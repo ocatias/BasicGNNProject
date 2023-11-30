@@ -141,9 +141,7 @@ class GNN_node(torch.nn.Module):
         self.gnn_type = gnn_type
         self.edge_encoder = edge_encoder
         if self.sequential_k_wl:
-            self.k_wl_embeddings = [NodeEncoder(emb_dim, feature_dims=[10] * 10) for k in range(2,
-                                                                                                self.k_wl + 1)]  # [torch.nn.Embedding(k ** 2, emb_dim) for k in range(2, self.k_wl + 1)]
-            # [torch.nn.init.xavier_uniform_(i.weight.data) for i in self.k_wl_embeddings]
+            self.k_wl_embeddings = [NodeEncoder(emb_dim, feature_dims=[10] * 10) for k in range(2, self.k_wl + 1)]
             for e in self.k_wl_embeddings:
                 e.to(0)
             #

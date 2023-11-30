@@ -12,6 +12,7 @@ from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims
 
+from Misc.count_node_degree import AddNodeDegree
 from Misc.count_triangles import CountTriangles
 from Misc.dataloader import DataLoader
 from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom, FilterMaxGraphSize, ComposeFilters
@@ -56,7 +57,11 @@ def get_transform(args, split=None):
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl)))
         if args.sequential_k_wl:
-            transforms.append(AddZeroNodeAttr(1))
+            if args.add_node_degree:
+                transforms.append(AddNodeDegree())
+            else:
+                transforms.append(AddZeroNodeAttr(1))
+
             transforms.append(AddZeroEdgeAttr(1))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
@@ -167,7 +172,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
                             uses_k_wl_transform=uses_k_wl_transform,
                             k_wl_separate=k_wl_separate_embedding)
     elif args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
-        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[100, 100, 100, 100, 100, 100, 100],
+        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 100, 100, 100, 100, 100, 100],
                                    uses_k_wl_transform=uses_k_wl_transform,
                                    k_wl_separate=k_wl_separate_embedding)
         edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[100, 100, 100],

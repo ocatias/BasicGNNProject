@@ -108,6 +108,9 @@ def parse_args(passed_args=None):
     parser.add_argument('--sequential_k_wl', type=int, default=0,
                         help="Whether to use sequential k-wl. Sequential k-wl will inititalize GNN with k=1 (MPNN) "
                              "and then use all k up to selected k. Need num gnn layers of at least k")
+    parser.add_argument('--add_node_degree', type=int, default=0,
+                        help="Whether to add node degree to node features of graphs. Currently works only with "
+                             "k-wl (easy to change)")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:
