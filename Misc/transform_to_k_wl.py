@@ -25,8 +25,8 @@ from Misc.graph_visualizations import visualize
 def k_wl_sequential_layers(n, k):
     d = ceil(n / k)
     o = list(range(d, n, d))[:k - 1]
-    if len(o) < k -1:
-        o.append(n-1)
+    if len(o) < k - 1:
+        o.append(n - 1)
     return o
 
 
@@ -80,12 +80,13 @@ def mapping_to_assignment_index(m):
 
 class TransforToKWl(BaseTransform):
     def __init__(self, k: int, turbo=False, max_group_size=40, agg_function_features: str = 'cat', set_based=False,
-                 modify=False):
+                 modify=False, connected=False):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
         self.set_based = set_based
         self.modify = modify
+        self.connected = connected
         print('modify', modify)
         if __name__ == '__main__':
             self.graph_data_path = path.join('..', 'metadata', 'k_wl_graphs')
@@ -129,6 +130,9 @@ class TransforToKWl(BaseTransform):
         if n == 0:
             return [], [[]]
         all_combinations = list(combinations(list(range(n)), self.k))
+        if self.connected:
+            all_combinations = [c for c in all_combinations if
+                                sum([bool(adj[c[j - 1]][c[j]]) for j in range(len(c))]) > (0 if self.k == 2 else 1)]
         combinations_index = {c: i for i, c in enumerate(all_combinations)}
         edges = [[], []]
         edge_attributes = []
@@ -141,10 +145,13 @@ class TransforToKWl(BaseTransform):
                 used_edges.add(e)
             l = [x for x in list(range(n)) if x not in set(e)]
             for x in list(combinations(l, self.k - 1)):
-                # i_0 = all_combinations.index(sort_tuple(((e[0],) + x)))
-                i_0 = combinations_index[sort_tuple(((e[0],) + x))]
-                # i_1 = all_combinations.index(sort_tuple(((e[1],) + x)))
-                i_1 = combinations_index[sort_tuple(((e[1],) + x))]
+                t1 =sort_tuple(((e[0],) + x))
+                t2 =sort_tuple(((e[1],) + x))
+                if self.connected and (t1 not in combinations_index.keys() or t2 not in combinations_index.keys()):
+                    continue
+
+                i_0 = combinations_index[t1]
+                i_1 = combinations_index[t2]
                 edges[0].append(i_0)
                 edges[1].append(i_1)
                 edge_attributes.append(1)

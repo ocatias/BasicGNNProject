@@ -55,7 +55,8 @@ def get_transform(args, split=None):
                                         max_group_size=args.k_wl_turbo_max_group_size,
                                         agg_function_features=args.k_wl_pool_function,
                                         set_based=bool(args.k_wl_set_based),
-                                        modify=not bool(args.sequential_k_wl)))
+                                        modify=not bool(args.sequential_k_wl),
+                                        connected=args.connected_k_wl_last_k))
         if args.sequential_k_wl:
             if args.add_node_degree:
                 transforms.append(AddNodeDegree())

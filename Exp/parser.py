@@ -111,6 +111,8 @@ def parse_args(passed_args=None):
     parser.add_argument('--add_node_degree', type=int, default=0,
                         help="Whether to add node degree to node features of graphs. Currently works only with "
                              "k-wl (easy to change)")
+    parser.add_argument('--connected_k_wl_last_k', type=int, default=0,
+                        help="Whether to use connected version of k-wl on the last k")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:
