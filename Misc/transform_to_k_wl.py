@@ -373,7 +373,7 @@ class TransforToKWl(BaseTransform):
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})(turbo={self.uses_turbo})'
                 f'(max_group_size={self.max_group_size})(feature_pooling={self.agg_function_features_name})'
-                f'(set_based={self.set_based})')
+                f'(set_based={self.set_based})(connected={self.connected})')
 
     def __del__(self):
         print('number of vertices in graphs', self.vertices_num)
