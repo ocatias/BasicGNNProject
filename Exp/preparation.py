@@ -57,17 +57,22 @@ def get_transform(args, split=None):
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl),
                                         connected=args.connected_k_wl_last_k))
-        if args.sequential_k_wl:
-            if args.add_node_degree:
-                transforms.append(AddNodeDegree())
-            else:
-                transforms.append(AddZeroNodeAttr(1))
+        if args.sequential_k_wl and not args.add_node_degree:
+            transforms.append(AddZeroNodeAttr(1))
 
             transforms.append(AddZeroEdgeAttr(1))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())
-    if args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi',
+    if args.add_node_degree:
+        transforms.append(AddNodeDegree())
+    if args.dataset.lower() in [ 'mutag', 'imdb-binary', 'imdb-multi']:
+        transforms.append(AddZeroEdgeAttr(1))
+        if not args.add_node_degree:
+            transforms.append(AddZeroNodeAttr(1))
+
+
+    if args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm",
                                 'enzymes'] and not args.transform_k_wl:
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
