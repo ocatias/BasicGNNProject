@@ -5,6 +5,7 @@ Trains and evaluates a model a single time for given hyperparameters.
 import random
 import time
 import os
+from uuid import uuid4
 
 import wandb
 import torch
@@ -41,7 +42,7 @@ def print_progress(train_loss, val_loss, test_loss, metric_name, val_metric, tes
     print(f"\tTEST\t loss: {test_loss:6.4f}\t  {metric_name}: {test_metric:10.4f}")
 
 
-def main(args):
+def main(args, cross_val_i):
     print(args)
     device = args.device
     if device.isdecimal():
@@ -49,7 +50,7 @@ def main(args):
     use_tracking = args.use_tracking
 
     set_seed(args.seed)
-    train_loader, val_loader, test_loader = load_dataset(args, config)
+    train_loader, val_loader, test_loader = load_dataset(args, config, cross_val_i)
     num_classes, num_vertex_features = train_loader.dataset.num_classes, train_loader.dataset.num_node_features
 
     if args.dataset.lower() == "zinc" or "ogb" in args.dataset.lower():
@@ -169,9 +170,19 @@ def main(args):
 
 
 def run(passed_args=None):
-    torch.cuda.empty_cache()
     args = parse_args(passed_args)
-    return main(args)
+    if args.cross_validation > 0:
+        cross_validation = range(args.cross_validation)
+        cross_val_id = uuid4()
+        args.cross_val_id = str(cross_val_id)
+    else:
+        cross_validation = [1]
+    for i in cross_validation:
+        args.cross_val_run = i
+        torch.cuda.empty_cache()
+        print(f'run {i}')
+        print('memory stats', torch.cuda.memory_stats())
+        main(args, i)
 
 
 if __name__ == "__main__":

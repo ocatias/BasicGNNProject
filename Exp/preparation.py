@@ -84,7 +84,7 @@ def escape_dir(s):
     return s.replace("\n", "").replace(' ', '').replace('=', '-').replace(',', '-').replace('[', '').replace(']', '')
 
 
-def load_dataset(args, config):
+def load_dataset(args, config, cross_val_i):
     transform = get_transform(args)
     filter = get_filters(args)
     print(repr(transform))
@@ -130,18 +130,32 @@ def load_dataset(args, config):
         dataset = TUDataset(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
                             pre_filter=filter, use_node_attr=True, use_edge_attr=True)
 
-        split_idx = {'train': [], 'valid': [], 'test': []}
-        random.seed(42)
-        for i in range(len(dataset)):
-            x = dataset.get(i)
-            if random.random() < 0.5:
-                split_idx['train'].append(i)
-            elif random.random() < 0.5:
-                split_idx['valid'].append(i)
-            else:
-                split_idx['test'].append(i)
+        perm = torch.randperm(len(dataset), dtype=torch.long)
+        dataset = dataset[perm]
+        test_mask = torch.zeros(len(dataset), dtype=torch.bool)
+        n = len(dataset) // args.cross_validation
+        test_mask[cross_val_i * n:(cross_val_i + 1) * n] = 1
+        test_dataset = dataset[test_mask]
+        train_dataset = dataset[~test_mask]
 
-        datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
+        n = len(train_dataset) // args.cross_validation
+        val_mask = torch.zeros(len(train_dataset), dtype=torch.bool)
+        val_mask[cross_val_i * n:(cross_val_i + 1) * n] = 1
+        val_dataset = train_dataset[val_mask]
+        train_dataset = train_dataset[~val_mask]
+        datasets = [train_dataset, val_dataset, test_dataset]
+        # split_idx = {'train': [], 'valid': [], 'test': []}
+        # random.seed(42)
+        # for i in range(len(dataset)):
+        #     x = dataset.get(i)
+        #     if random.random() < 0.5:
+        #         split_idx['train'].append(i)
+        #     elif random.random() < 0.5:
+        #         split_idx['valid'].append(i)
+        #     else:
+        #         split_idx['test'].append(i)
+
+        # datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     else:
         raise NotImplementedError("Unknown dataset")
 

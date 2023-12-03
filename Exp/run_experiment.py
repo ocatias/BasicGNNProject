@@ -233,19 +233,19 @@ def run_final_evaluation(args, final_eval_path, best_params):
     for iteration in range(nr_tries):
         print(f"Evaluation: {iteration + len(prev_evaluation) + 1} / {nr_tries}")
         best_params["--seed"] = iteration
-        result_dict = run(best_params)
-
-        output_dict = {}
-        output_dict["params"] = best_params
-        output_dict.update(copy.deepcopy(result_dict))
-
-        output_path = os.path.join(final_eval_path, f"eval_{len(glob.glob(os.path.join(final_eval_path, '*')))}.json")
-        # print(output_path)
-        with open(output_path, "w") as file:
-            json.dump(output_dict, file, indent=4)
-
-        del output_dict
-        del result_dict
+        run(best_params)
+        #
+        # output_dict = {}
+        # output_dict["params"] = best_params
+        # output_dict.update(copy.deepcopy(result_dict))
+        #
+        # output_path = os.path.join(final_eval_path, f"eval_{len(glob.glob(os.path.join(final_eval_path, '*')))}.json")
+        # # print(output_path)
+        # with open(output_path, "w") as file:
+        #     json.dump(output_dict, file, indent=4)
+        #
+        # del output_dict
+        # del result_dict
         gc.collect()
 
 
