@@ -4,6 +4,7 @@ import random
 from glob import escape
 
 import torch
+from torch_geometric.data import DataLoader
 from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, TUDataset
 import torch.optim as optim
 from torch_geometric.utils import to_undirected
@@ -14,7 +15,7 @@ from ogb.utils.features import get_atom_feature_dims
 
 from Misc.count_node_degree import AddNodeDegree
 from Misc.count_triangles import CountTriangles
-from Misc.dataloader import DataLoader
+from Misc.dataloader import DataLoaderCustom
 from Misc.dataset_pyg_custom import PygGraphPropPredDatasetCustom, FilterMaxGraphSize, ComposeFilters
 from Misc.transform_to_k_wl import TransforToKWl
 from Models.gnn import GNN
@@ -57,25 +58,17 @@ def get_transform(args, split=None):
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl),
                                         connected=args.connected_k_wl_last_k))
-        if args.sequential_k_wl and not args.add_node_degree:
-            transforms.append(AddZeroNodeAttr(1))
 
-            transforms.append(AddZeroEdgeAttr(1))
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
         transforms.append(CountTriangles())
     if args.add_node_degree:
         transforms.append(AddNodeDegree())
-    if args.dataset.lower() in [ 'mutag', 'imdb-binary', 'imdb-multi']:
-        transforms.append(AddZeroEdgeAttr(1))
-        if not args.add_node_degree:
-            transforms.append(AddZeroNodeAttr(1))
+    else:
+        transforms.append(AddZeroNodeAttr(1))
+    transforms.append(AddZeroEdgeAttr(1))
 
 
-    if args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm",
-                                'enzymes'] and not args.transform_k_wl:
-        transforms.append(AddZeroEdgeAttr(args.emb_dim))
-        transforms.append(PadNodeAttr(args.emb_dim))
 
     return Compose(transforms)
 
@@ -158,10 +151,14 @@ def load_dataset(args, config, cross_val_i):
         # datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     else:
         raise NotImplementedError("Unknown dataset")
-
-    train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
-    test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
+    if args.sequential_k_wl and int(args.transform_k_wl) > 1:
+        train_loader = DataLoaderCustom(datasets[0], batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoaderCustom(datasets[1], batch_size=args.batch_size, shuffle=False)
+        test_loader = DataLoaderCustom(datasets[2], batch_size=args.batch_size, shuffle=False)
+    else:
+        train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
+        test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
 
     del transform
     return train_loader, val_loader, test_loader

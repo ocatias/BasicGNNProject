@@ -75,6 +75,6 @@ def collate(data_list):
     return batch.contiguous()
 
 
-class DataLoader(torch.utils.data.DataLoader):
+class DataLoaderCustom(torch.utils.data.DataLoader):
     def __init__(self, dataset, **kwargs):
-        super(DataLoader, self).__init__(dataset, collate_fn=collate, **kwargs)
+        super(DataLoaderCustom, self).__init__(dataset, collate_fn=collate, **kwargs)

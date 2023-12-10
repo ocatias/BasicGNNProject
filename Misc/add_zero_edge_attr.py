@@ -1,4 +1,5 @@
 import torch
+from torch import cat
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 
@@ -16,11 +17,17 @@ class AddZeroEdgeAttr(BaseTransform):
         self.edge_attr_size = edge_attr_size
 
     def __call__(self, data: Data) -> Data:
-        data.edge_attr = torch.zeros((data.edge_index.shape[1], self.edge_attr_size))
+        if 'edge_attr' in data:
+            data['edge_attr'] = cat([torch.zeros((data.edge_index.shape[1], self.edge_attr_size)), data.edge_attr],
+                                    dim=1).long()
+        else:
+            data['edge_attr'] = torch.zeros((data.edge_index.shape[1], self.edge_attr_size))
+
         return data
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(edge_attr_size={self.edge_attr_size})')
+
 
 class DebugTransform(BaseTransform):
     def __init__(self):
@@ -32,6 +39,7 @@ class DebugTransform(BaseTransform):
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}')
+
 
 class AddZeroNodeAttr(BaseTransform):
     r"""To mesake it easy to run GNNs that expect node attributes as x on graphs without them, this graph transformation gives every node a zero node feature / attribute.
@@ -46,7 +54,10 @@ class AddZeroNodeAttr(BaseTransform):
         self.node_attr_size = node_attr_size
 
     def __call__(self, data: Data) -> Data:
-        if 'x' not in data.keys:
+
+        if 'x' in data.keys:
+            data['x'] = cat([torch.zeros((data.num_nodes, self.node_attr_size)), data.x], dim=1).long()
+        else:
             data['x'] = torch.zeros((data.num_nodes, self.node_attr_size))
         return data
 

@@ -14,7 +14,7 @@ class AddNodeDegree(BaseTransform):
         for i in data.edge_index[0]:
             l[i][0] += 1
         if 'x' in data.keys:
-            data['x'] = cat([data.x, tensor(l)], dim=1).long()
+            data['x'] = cat([ tensor(l), data.x], dim=1).long()
         else:
             data['x'] = tensor(l).long()
         return data
