@@ -68,8 +68,6 @@ def get_transform(args, split=None):
         transforms.append(AddZeroNodeAttr(1))
     transforms.append(AddZeroEdgeAttr(1))
 
-
-
     return Compose(transforms)
 
 
@@ -189,10 +187,10 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
                             uses_k_wl_transform=uses_k_wl_transform,
                             k_wl_separate=k_wl_separate_embedding)
     elif args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
-        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 100, 100, 100, 100, 100, 100],
+        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 300, 100, 100, 100, 100, 100, 100],
                                    uses_k_wl_transform=uses_k_wl_transform,
                                    k_wl_separate=k_wl_separate_embedding)
-        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[100, 100, 100],
+        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 100, 100, 100],
                                    uses_k_wl_transform=uses_k_wl_transform,
                                    k_wl_separate=k_wl_separate_embedding)
 

@@ -15,7 +15,7 @@ class NodeEncoder(torch.nn.Module):
             self.k_wl_separate = False
             emb_dim_local = emb_dim
         if feature_dims is None:
-            feature_dims =  [100] +get_atom_feature_dims()  # first one is node degree
+            feature_dims = [100] + get_atom_feature_dims()  # first one is node degree
         if uses_k_wl_transform:
             feature_dims = [100] + feature_dims
         for i, dim in enumerate(feature_dims):
@@ -124,4 +124,3 @@ class KWlEmbeddings(torch.nn.Module):
 
     def forward(self, x):
         return self.emb(x)
-
