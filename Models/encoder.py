@@ -17,7 +17,7 @@ class NodeEncoder(torch.nn.Module):
         if feature_dims is None:
             feature_dims = [100] + get_atom_feature_dims()  # first one is node degree
         if uses_k_wl_transform:
-            feature_dims = [100] + feature_dims
+            feature_dims.insert(1, 10)  # first one is node degree or empty
         for i, dim in enumerate(feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim_local)
             torch.nn.init.xavier_uniform_(emb.weight.data)
