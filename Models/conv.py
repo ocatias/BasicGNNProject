@@ -165,7 +165,7 @@ class GNN_node(torch.nn.Module):
         x, edge_index, edge_attr, batch = batched_data.x, batched_data.edge_index, batched_data.edge_attr, batched_data.batch
         k_wl_layers = []
         if self.sequential_k_wl:
-            seq_x = [batched_data[f'x_{i}'].int() for i in range(2, self.k_wl + 1)]
+            seq_x = [batched_data[f'iso_type_{i}'].int() for i in range(2, self.k_wl + 1)]
             seq_x = [self.k_wl_embeddings[i](x_).squeeze() for i, x_ in enumerate(seq_x)]
             seq_edge_index = [batched_data[f'edge_index_{i}'].long() for i in
                               range(2, self.k_wl + 1)]

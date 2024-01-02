@@ -7,6 +7,7 @@ from itertools import product, combinations
 from math import factorial, comb, ceil
 from os import path
 from statistics import mean
+from uuid import uuid4
 
 import networkx as nx
 import torch
@@ -22,12 +23,27 @@ from Misc.biconnected_components_finder import BiconnectedComponents
 from Misc.graph_visualizations import visualize
 
 
+def edge_in_same_group(groups, simple_v, i, j):
+    for g in groups:
+        if i in g and j in g:
+            return True
+    if i in simple_v and j in simple_v:
+        return True
+    return False
+
+
 def k_wl_sequential_layers(n, k):
     d = ceil(n / k)
     o = list(range(d, n, d))[:k - 1]
     if len(o) < k - 1:
         o.append(n - 1)
     return o
+
+
+def get_number_of_triangles_per_node(graph):
+    g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
+    tri = nx.triangles(g).values()
+    return tri
 
 
 def get_number_of_triangles(graph):
@@ -67,27 +83,28 @@ def sort_tuple(t):
     return tuple(sorted(t))
 
 
-def mapping_to_assignment_index(m):
+def mapping_to_assignment_index(m, offset=0):
     k = len(m[0])
     out = [[-1] * (k * len(m)), [-1] * (k * len(m))]
     for i, c in enumerate(m):
         for j, e in enumerate(c):
             out[0][i * k + j] = e
-            out[1][i * k + j] = i
+            out[1][i * k + j] = i + offset
     return out
     # return {i: c for i, c in enumerate(m)}
 
 
 class TransforToKWl(BaseTransform):
-    def __init__(self, k: int, turbo=False, max_group_size=40, agg_function_features: str = 'cat', set_based=False,
-                 modify=False, connected=False):
+    def __init__(self, k: int, turbo=False, max_group_size=500, agg_function_features: str = 'cat', set_based=False,
+                 modify=False, connected=False, super_connected=False, compute_attributes=True):
         if not 2 <= k <= 3:
             raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
         self.set_based = set_based
         self.modify = modify
         self.connected = connected
-        print('modify', modify)
+        self.super_connected = super_connected
+        self.compute_attributes = compute_attributes
         if __name__ == '__main__':
             self.graph_data_path = path.join('..', 'metadata', 'k_wl_graphs')
         else:
@@ -116,6 +133,7 @@ class TransforToKWl(BaseTransform):
         else:
             raise ValueError('agg_function_features must be mode or cat', agg_function_features)
         self.nan_tensor_edge_features = None
+        self.last_processed_data = None
 
     def safe_cat(self, selected_attrs: list, edge=True):
         if edge and len(selected_attrs) < self.num_edge_repeat:
@@ -132,7 +150,8 @@ class TransforToKWl(BaseTransform):
         all_combinations = list(combinations(list(range(n)), self.k))
         if self.connected:
             all_combinations = [c for c in all_combinations if
-                                sum([bool(adj[c[j - 1]][c[j]]) for j in range(len(c))]) > (0 if self.k == 2 else 1)]
+                                sum([bool(adj[c[j - 1]][c[j]]) for j in range(len(c))]) > (
+                                        (0 if self.k == 2 else 1) + (1 if self.super_connected else 0))]
         combinations_index = {c: i for i, c in enumerate(all_combinations)}
         edges = [[], []]
         edge_attributes = []
@@ -145,8 +164,8 @@ class TransforToKWl(BaseTransform):
                 used_edges.add(e)
             l = [x for x in list(range(n)) if x not in set(e)]
             for x in list(combinations(l, self.k - 1)):
-                t1 =sort_tuple(((e[0],) + x))
-                t2 =sort_tuple(((e[1],) + x))
+                t1 = sort_tuple(((e[0],) + x))
+                t2 = sort_tuple(((e[1],) + x))
                 if self.connected and (t1 not in combinations_index.keys() or t2 not in combinations_index.keys()):
                     continue
 
@@ -208,8 +227,6 @@ class TransforToKWl(BaseTransform):
                     if i != j:
                         if adj[i][j] is not None:
                             s += 1
-            if 1 in c1 and 1 in c2:
-                print(c1, c2, s)
             if s == 0:
                 return None
             else:
@@ -236,7 +253,12 @@ class TransforToKWl(BaseTransform):
             return None
         return diff_pos + 1
 
-    def graph_to_k_wl_graph(self, graph, return_mapping=None):
+    def graph_to_k_wl_graph(self, graph, return_mapping=None, override_modify=None):
+        self.last_processed_data = graph
+        if override_modify is not None:
+            local_modify = override_modify
+        else:
+            local_modify = self.modify
         vert_num = graph.num_nodes
         num_edges = graph.edge_index.shape[1]
         self.k_wl_vertices_num[vert_num] += 1
@@ -266,7 +288,7 @@ class TransforToKWl(BaseTransform):
         else:
             all_combinations, new_edges, new_edge_attr = self.create_empty_graph_tuple(graph)
         new_x = [0] * len(all_combinations)
-        if len_edge_attr > 0:
+        if self.compute_attributes and len_edge_attr > 0:
             for i in range(len(new_edge_attr)):
                 c1 = all_combinations[new_edges[0][i]]
                 c2 = all_combinations[new_edges[1][i]]
@@ -305,7 +327,7 @@ class TransforToKWl(BaseTransform):
                 k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
             self.stats_isomorphism_indexes[-1][k_x[0]] += 1
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
-            if len_vert_attr > 0:
+            if self.compute_attributes and len_vert_attr > 0:
                 new_x[i] = cat(
                     (tensor(k_x), self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c], False),),
                     0)
@@ -313,20 +335,21 @@ class TransforToKWl(BaseTransform):
             #     new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c])).values.reshape(1)))
             else:
                 new_x[i] = tensor(k_x).long()
-        graph['x' + ("" if self.modify else f"_{self.k}")] = stack(new_x)
-        if self.modify:
+
+        graph[f'iso_type_{self.k}'] = stack(new_x).squeeze(dim=1)
+        if local_modify:
             graph.num_nodes = len(all_combinations)
+            graph.x = graph[f'iso_type_{self.k}']
 
         if len(new_edges[0]) > 0:
-            # print('new_edge_attr', new_edge_attr)
             new_edge_attr = stack(new_edge_attr)
             new_edge_index = tensor(new_edges)
         else:
             new_edge_attr = empty((0, len_edge_attr + 1), dtype=int32)
             new_edge_index = empty((2, 0), dtype=int32)
         graph[f'assignment_index_{self.k}'] = tensor(mapping_to_assignment_index(all_combinations))
-        graph['edge_index' + ("" if self.modify else f"_{self.k}")] = new_edge_index
-        graph['edge_attr' + ("" if self.modify else f"_{self.k}")] = new_edge_attr
+        graph['edge_index' + ("" if local_modify else f"_{self.k}")] = new_edge_index
+        graph['edge_attr' + ("" if local_modify else f"_{self.k}")] = new_edge_attr
 
         # if 'x' not in graph.keys:
         #     graph['x'] = tensor([[1.0]] * graph.num_nodes)
@@ -344,13 +367,14 @@ class TransforToKWl(BaseTransform):
         return graph
 
     def __call__(self, data: Data) -> Data:
+        self.last_processed_data = None
         self.stats_triangle_counts.append(get_number_of_triangles(data))
         self.processed_num += 1
         if self.processed_num % 100 == 0:
             print(f'transform to k-WL -- done {self.processed_num}')
         num_nodes = data.num_nodes
         self.vertices_num[num_nodes] += 1
-        if num_nodes <= 2 or data.edge_index.shape[1] == 0:
+        if num_nodes <= self.k or data.edge_index.shape[1] == 0:
             return self.add_dimensions_to_graph_without_modifying(data)
         if self.uses_turbo:
             return self.k_wl_turbo(data)
@@ -381,14 +405,16 @@ class TransforToKWl(BaseTransform):
         print('number of graphs reduced to what', self.vertices_reduction)
         print('average_num_of_vertices', self.average_num_of_vertices)
         print('average_num_of_new_vertices', self.average_num_of_new_vertices)
+        print('triangle counts', self.stats_triangle_counts)
+        print('last processed data', self.last_processed_data)
         # print('number of triangles and isomorphism:',
         #       list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
-        with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
-                  'wt') as f:
-            f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
+        # with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
+        #           'wt') as f:
+        #     f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
 
     def get_subgraph(self, graph, vertices):
-        new_graph = copy.deepcopy(graph)
+        new_graph = type(graph)()
         new_graph.num_nodes = len(vertices)
         new_graph.x = []
         if graph.edge_attr is not None:
@@ -435,12 +461,10 @@ class TransforToKWl(BaseTransform):
                 old_vertex_to_group_mapping[i] = j
         old_vertex_not_in_subgraphs = [i for i in range(graph.num_nodes) if not vertices_in_components[i]]
         new_graph = copy.deepcopy(graph)
-        # each of the subgraph will have n^k vertices and all vertices that will not be changed
-        new_graph.num_nodes = sum([len(n) ** self.k for n in groups]) \
-                              + graph.num_nodes - sum(vertices_in_components.values())
 
         # get all subgraphs detected by BCC and convert them using k-WL algorithm
-        processed_subgraphs = [self.graph_to_k_wl_graph(self.get_subgraph(graph, g), g) for g in groups]
+        processed_subgraphs = [self.graph_to_k_wl_graph(self.get_subgraph(graph, g), g, override_modify=False) for g in
+                               groups]
         # create mapping between vertices of new graph and vertices in old graph. Left side is old vertex index.
         # Only for vertices not in any subgraph!
         old_vertex_to_new_vertex_mapping_no_subgraps = {o: i for i, o in enumerate(old_vertex_not_in_subgraphs)}
@@ -451,24 +475,42 @@ class TransforToKWl(BaseTransform):
         new_vertex_to_group_mapping = dict()
         mapped_vertices = len(old_vertex_to_new_vertex_mapping_no_subgraps)
         for i, g in enumerate(groups):
-            group_to_new_vertex_mapping[i] = list(range(mapped_vertices, mapped_vertices + len(g) ** self.k))
+            group_to_new_vertex_mapping[i] = \
+                list(range(mapped_vertices, mapped_vertices + processed_subgraphs[i][0][f'iso_type_{self.k}'].shape[0]))
             mapped_vertices += len(group_to_new_vertex_mapping[i])
             for k in group_to_new_vertex_mapping[i]:
                 new_vertex_to_group_mapping[k] = i
 
+        new_graph.num_nodes = sum([g[f'iso_type_{self.k}'].shape[0] for g, _ in processed_subgraphs]) \
+                              + graph.num_nodes - sum(vertices_in_components.values())
         new_graph.x = []
         new_graph.edge_attr = []
         new_graph.edge_index = ([], [])
 
+        assignment_index = [[-1] * len(old_vertex_not_in_subgraphs),
+                            [-1] * len(old_vertex_not_in_subgraphs)]
+
         # add simple elements of graph first
-        for v in old_vertex_not_in_subgraphs:
-            # add padding to x and edge attr because the subgraphs added later have one dimension more
-            new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
+        for i, v in enumerate(old_vertex_not_in_subgraphs):
+            if self.compute_attributes:
+                # add padding to x and edge attr because the subgraphs added later have one dimension more
+                new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
+            else:
+                new_graph.x.append(tensor((0)))
+            assignment_index[0][i] = v
+            assignment_index[1][i] = i
+        for _, m in processed_subgraphs:
+            m_i = mapping_to_assignment_index(m, offset=max(assignment_index[1], default=-1) + 1)
+            assignment_index[0].extend(m_i[0])
+            assignment_index[1].extend(m_i[1])
+        new_graph[f'assignment_index_{self.k}'] = tensor(assignment_index)
         for i, (x, y) in enumerate(zip(*graph.edge_index.tolist())):
             if x in old_vertex_not_in_subgraphs and y in old_vertex_not_in_subgraphs:
-                new_graph.edge_attr.append(pad(graph.edge_attr[i], pad=(1, 0), value=0))
-                new_graph.edge_index[0].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[x]))
-                new_graph.edge_index[1].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[y]))
+                if self.compute_attributes:
+                    new_graph.edge_attr.append(pad(graph.edge_attr[i], pad=(1, 0), value=0))
+                # TODO uncomment this to have edges between old vertices
+                # new_graph.edge_index[0].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[x]))
+                # new_graph.edge_index[1].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[y]))
 
         # add subgraphs one by one with all their connections
         # skipping connections to vertices not yet in graph
@@ -481,65 +523,100 @@ class TransforToKWl(BaseTransform):
         for sub_i, (subgraph, subgraph_mapping) in enumerate(processed_subgraphs):
             # adding vertexes and intra subgraph edges
             starting_id = len(new_graph.x)
-            new_graph.x.extend(list(subgraph.x))
-            new_graph.edge_attr.extend(list(subgraph.edge_attr))
-            for i, j in zip(*subgraph.edge_index):
+            new_graph.x.extend(list(subgraph[f'iso_type_{self.k}']))
+            if self.compute_attributes:
+                new_graph.edge_attr.extend(list(subgraph[f'edge_attr_{self.k}']))
+            for i, j in zip(*subgraph[f'edge_index_{self.k}']):
                 new_graph.edge_index[0].append(i + starting_id)
                 new_graph.edge_index[1].append(j + starting_id)
             # adding edges between subgraph and already present vertices
-            # adding edges only between the k-tuples where the original vertice is present
+            # adding edges only between the k-tuples where the original vertex is present
             #  and not to all the new vertices in the subgraph
-            for e_i, (i, j) in enumerate(zip(*graph.edge_index)):
-                i = int(i)
-                j = int(j)
-                if i in groups[sub_i] and j in already_processed_old_vertices:
-                    if j in old_vertex_not_in_subgraphs:
-                        for i_v in range(starting_id, starting_id + subgraph.num_nodes):
-                            if i in subgraph_mapping[i_v - starting_id]:
-                                new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
-                                new_graph.edge_index[0].append(i_v)
-                                new_graph.edge_index[1].append(old_vertex_to_new_vertex_mapping_no_subgraps[j])
-                    else:
-                        other_group_starting_new_vertex_id = \
-                            group_to_new_vertex_mapping[old_vertex_to_group_mapping[j]][0]
-                        other_group_old_vertex_mapping = processed_subgraphs[old_vertex_to_group_mapping[j]][1]
-                        size_of_other_group = len(group_to_new_vertex_mapping[old_vertex_to_group_mapping[j]])
-                        for i_v in range(starting_id, starting_id + subgraph.num_nodes):
-                            for j_v in range(other_group_starting_new_vertex_id,
-                                             other_group_starting_new_vertex_id + size_of_other_group):
+            # new_edges_to_add = set()
 
-                                if i in subgraph_mapping[i_v - starting_id] and \
-                                        j in other_group_old_vertex_mapping[j_v - other_group_starting_new_vertex_id]:
-                                    new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
-                                    new_graph.edge_index[0].append(i_v)
-                                    new_graph.edge_index[1].append(j_v)
-                # other way
-                elif j in groups[sub_i] and i in already_processed_old_vertices:
-                    if i in old_vertex_not_in_subgraphs:
-                        for j_v in range(starting_id, starting_id + subgraph.num_nodes):
-                            if j in subgraph_mapping[j_v - starting_id]:
-                                new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
-                                new_graph.edge_index[0].append(old_vertex_to_new_vertex_mapping_no_subgraps[i])
-                                new_graph.edge_index[1].append(j_v)
-                    else:
-                        other_group_starting_new_vertex_id = \
-                            group_to_new_vertex_mapping[old_vertex_to_group_mapping[i]][0]
-                        size_of_other_group = len(group_to_new_vertex_mapping[old_vertex_to_group_mapping[i]])
-                        other_group_old_vertex_mapping = processed_subgraphs[old_vertex_to_group_mapping[i]][1]
-                        for j_v in range(starting_id, starting_id + subgraph.num_nodes):
-                            for i_v in range(other_group_starting_new_vertex_id,
-                                             other_group_starting_new_vertex_id + size_of_other_group):
+            # for e_i, (i, j) in enumerate(zip(*graph.edge_index)):
+            #     t = sort_tuple((i, j))
+            #     if t not in new_edges_to_add and \
+            #             not edge_in_same_group(groups=groups, simple_v=old_vertex_not_in_subgraphs, i=i, j=j):
+            #         new_edges_to_add.add((t, e_i))
 
-                                if j in subgraph_mapping[j_v - starting_id] and \
-                                        i in other_group_old_vertex_mapping[i_v - other_group_starting_new_vertex_id]:
-                                    new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
-                                    new_graph.edge_index[0].append(i_v)
-                                    new_graph.edge_index[1].append(j_v)
+            # for e_i, (i, j) in enumerate(zip(*graph.edge_index)):
+            #     i = int(i)
+            #     j = int(j)
+            #     if i in groups[sub_i] and j in already_processed_old_vertices:
+            #         if j in old_vertex_not_in_subgraphs:
+            #             for i_v in range(starting_id, starting_id + subgraph[f'iso_type_{self.k}'].shape[0]):
+            #                 if i in subgraph_mapping[i_v - starting_id]:
+            #                     if self.compute_attributes:
+            #                         new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
+            #                     new_graph.edge_index[0].append(i_v)
+            #                     new_graph.edge_index[1].append(old_vertex_to_new_vertex_mapping_no_subgraps[j])
+            #         else:
+            #             other_group_starting_new_vertex_id = \
+            #                 group_to_new_vertex_mapping[old_vertex_to_group_mapping[j]][0]
+            #             other_group_old_vertex_mapping = processed_subgraphs[old_vertex_to_group_mapping[j]][1]
+            #             size_of_other_group = len(group_to_new_vertex_mapping[old_vertex_to_group_mapping[j]])
+            #             for i_v in range(starting_id, starting_id + subgraph[f'iso_type_{self.k}'].shape[0]):
+            #                 for j_v in range(other_group_starting_new_vertex_id,
+            #                                  other_group_starting_new_vertex_id + size_of_other_group):
+            #
+            #                     if i in subgraph_mapping[i_v - starting_id] and \
+            #                             j in other_group_old_vertex_mapping[j_v - other_group_starting_new_vertex_id]:
+            #                         if self.compute_attributes:
+            #                             new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
+            #                         new_graph.edge_index[0].append(i_v)
+            #                         new_graph.edge_index[1].append(j_v)
+            #     # other way
+            #     elif j in groups[sub_i] and i in already_processed_old_vertices:
+            #         if i in old_vertex_not_in_subgraphs:
+            #             for j_v in range(starting_id, starting_id + subgraph[f'iso_type_{self.k}'].shape[0]):
+            #                 if j in subgraph_mapping[j_v - starting_id]:
+            #                     if self.compute_attributes:
+            #                         new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
+            #                     new_graph.edge_index[0].append(old_vertex_to_new_vertex_mapping_no_subgraps[i])
+            #                     new_graph.edge_index[1].append(j_v)
+            #         else:
+            #             other_group_starting_new_vertex_id = \
+            #                 group_to_new_vertex_mapping[old_vertex_to_group_mapping[i]][0]
+            #             size_of_other_group = len(group_to_new_vertex_mapping[old_vertex_to_group_mapping[i]])
+            #             other_group_old_vertex_mapping = processed_subgraphs[old_vertex_to_group_mapping[i]][1]
+            #             for j_v in range(starting_id, starting_id + subgraph[f'iso_type_{self.k}'].shape[0]):
+            #                 for i_v in range(other_group_starting_new_vertex_id,
+            #                                  other_group_starting_new_vertex_id + size_of_other_group):
+            #
+            #                     if j in subgraph_mapping[j_v - starting_id] and \
+            #                             i in other_group_old_vertex_mapping[i_v - other_group_starting_new_vertex_id]:
+            #                         if self.compute_attributes:
+            #                             new_graph.edge_attr.append(pad(graph.edge_attr[e_i], pad=(1, 0), value=0))
+            #                         new_graph.edge_index[0].append(i_v)
+            #                         new_graph.edge_index[1].append(j_v)
             already_processed_old_vertices.extend(groups[sub_i])
         new_graph.x = stack(new_graph.x)
-        new_graph.edge_attr = stack(new_graph.edge_attr)
+
+        if self.compute_attributes:
+            new_graph.edge_attr = stack(new_graph.edge_attr)
         new_graph.edge_index = tensor(new_graph.edge_index)
-        return new_graph
+        if not new_graph.x.shape[0] == max(new_graph[f'assignment_index_{self.k}'][1]) + 1:
+            print(new_graph.x.shape[0])
+            print('assignment max', max(new_graph[f'assignment_index_{self.k}'][1]))
+            print('edge max', torch.max(new_graph.edge_index))
+            print('count distinct in assignment index', len(set(new_graph[f'assignment_index_{self.k}'][1].tolist())))
+            print('distinct in assignment index', set(new_graph[f'assignment_index_{self.k}'][1].tolist()))
+            print(new_graph)
+            print(graph)
+            print(groups)
+            print(new_graph[f"assignment_index_{self.k}"])
+            raise ValueError(f'values dont match {new_graph.x.shape, max(new_graph[f"assignment_index_{self.k}"][1])}')
+        if self.modify:
+            return new_graph
+        else:
+            graph[f'iso_type_{self.k}'] = new_graph.x
+            graph[f'assignment_index_{self.k}'] = new_graph[f'assignment_index_{self.k}']
+
+            if self.compute_attributes:
+                graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
+            graph[f'edge_index_{self.k}'] = new_graph.edge_index
+            return graph
 
     def add_dimensions_to_graph_without_modifying(self, data):
         if data.edge_attr.shape[0] == 0:
@@ -577,7 +654,3 @@ if __name__ == '__main__':
     # print(transformed_data.edge_attr)
     # pprint(list(zip(mapping, transformed_data.x)))
     # visualize(transformed_data, 'transformed_k=2', labels=mapping, e_feat_dim=0)
-
-# TODO compare the embeddings of the first class in CSL dataset with other classes. The first class is the only one we
-#  can differentiate from the other classes based on the isomorphic numbers
-#  The other classes should have the same embedding. First class should have completely different embedding
