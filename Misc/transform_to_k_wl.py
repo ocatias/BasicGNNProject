@@ -296,7 +296,7 @@ class TransforToKWl(BaseTransform):
             if graph.x is None:
                 graph.x = tensor([1]*graph.num_nodes)
             else:
-                if not isinstance(graph.x, tensor):
+                if isinstance(graph.x, list):
                     graph.x = tensor(graph.x)
                 graph.x = pad(graph.x, pad=(0, 1), value=1)
             graph.iso_type_1 = tensor([1] * graph.num_nodes)
