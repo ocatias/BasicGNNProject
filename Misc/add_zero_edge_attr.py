@@ -54,7 +54,6 @@ class AddZeroNodeAttr(BaseTransform):
         self.node_attr_size = node_attr_size
 
     def __call__(self, data: Data) -> Data:
-
         if 'x' in data.keys:
             data['x'] = cat([torch.zeros((data.num_nodes, self.node_attr_size)), data.x], dim=1).long()
         else:

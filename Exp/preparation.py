@@ -57,7 +57,8 @@ def get_transform(args, split=None):
                                         agg_function_features=args.k_wl_pool_function,
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl),
-                                        connected=args.connected_k_wl_last_k))
+                                        connected=args.connected_k_wl_last_k,
+                                        compute_attributes=args.dataset.lower() != 'imdb-binary'))
 
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:

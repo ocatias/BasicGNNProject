@@ -10,6 +10,8 @@ def collate(data_list):
     for key in keys:
         batch[key] = []
     batch.batch = []
+    if 'edge_index_1' in keys:
+        batch.batch_1 = []
     if 'edge_index_2' in keys:
         batch.batch_2 = []
     if 'edge_index_3' in keys:
@@ -17,27 +19,36 @@ def collate(data_list):
 
     keys.remove('edge_index')
     props = [
+        'edge_index_1', 'assignment_index_1',
         'edge_index_2', 'assignment_index_2', 'edge_index_3',
         'assignment_index_3', 'assignment_index_2to3'
     ]
     keys = [x for x in keys if x not in props]
 
-    cumsum_1 = N_1 = cumsum_2 = N_2 = cumsum_3 = N_3 = 0
+    cumsum_0 = N_0 =cumsum_1 = N_1 = cumsum_2 = N_2 = cumsum_3 = N_3 = 0
 
     for i, data in enumerate(data_list):
         for key in keys:
             batch[key].append(data[key])
 
-        N_1 = data.num_nodes
-        batch.edge_index.append(data.edge_index + cumsum_1)
-        batch.batch.append(torch.full((N_1, ), i, dtype=torch.long))
+        N_0 = data.num_nodes
+        batch.edge_index.append(data.edge_index + cumsum_0)
+        batch.batch.append(torch.full((N_0, ), i, dtype=torch.long))
+
+        if 'edge_index_1' in data:
+            N_1 = data.assignment_index_1[1].max().item() + 1
+            batch.edge_index_1.append(data.edge_index_1 + cumsum_1)
+            batch.assignment_index_1.append(
+                data.assignment_index_1 +
+                torch.tensor([[cumsum_0], [cumsum_1]]))
+            batch.batch_1.append(torch.full((N_1, ), i, dtype=torch.long))
 
         if 'edge_index_2' in data:
             N_2 = data.assignment_index_2[1].max().item() + 1
             batch.edge_index_2.append(data.edge_index_2 + cumsum_2)
             batch.assignment_index_2.append(
                 data.assignment_index_2 +
-                torch.tensor([[cumsum_1], [cumsum_2]]))
+                torch.tensor([[cumsum_0], [cumsum_2]]))
             batch.batch_2.append(torch.full((N_2, ), i, dtype=torch.long))
 
         if 'edge_index_3' in data:
@@ -45,7 +56,7 @@ def collate(data_list):
             batch.edge_index_3.append(data.edge_index_3 + cumsum_3)
             batch.assignment_index_3.append(
                 data.assignment_index_3 +
-                torch.tensor([[cumsum_1], [cumsum_3]]))
+                torch.tensor([[cumsum_0], [cumsum_3]]))
             batch.batch_3.append(torch.full((N_3, ), i, dtype=torch.long))
 
         if 'assignment_index_2to3' in data:
@@ -54,17 +65,21 @@ def collate(data_list):
                 data.assignment_index_2to3 +
                 torch.tensor([[cumsum_2], [cumsum_3]]))
 
+        cumsum_0 += N_0
         cumsum_1 += N_1
         cumsum_2 += N_2
         cumsum_3 += N_3
 
-    keys = [x for x in batch.keys if x not in ['batch', 'batch_2', 'batch_3']]
+    keys = [x for x in batch.keys if x not in ['batch', 'batch_1', 'batch_2', 'batch_3']]
     for key in keys:
         if torch.is_tensor(batch[key][0]):
             batch[key] = torch.cat(
                 batch[key], dim=data_list[0].__cat_dim__(key, batch[key][0]))
 
     batch.batch = torch.cat(batch.batch, dim=-1)
+
+    if 'batch_1' in batch:
+        batch.batch_1 = torch.cat(batch.batch_1, dim=-1)
 
     if 'batch_2' in batch:
         batch.batch_2 = torch.cat(batch.batch_2, dim=-1)

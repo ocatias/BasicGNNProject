@@ -23,6 +23,8 @@ from Misc.biconnected_components_finder import BiconnectedComponents
 from Misc.graph_visualizations import visualize
 
 
+
+
 def edge_in_same_group(groups, simple_v, i, j):
     for g in groups:
         if i in g and j in g:
@@ -94,11 +96,42 @@ def mapping_to_assignment_index(m, offset=0):
     # return {i: c for i, c in enumerate(m)}
 
 
+def get_subgraph(graph, vertices):
+    new_graph = type(graph)()
+    new_graph.num_nodes = len(vertices)
+    new_graph.x = []
+    if graph.edge_attr is not None:
+        new_graph.edge_attr = []
+    new_graph.edge_index = ([], [])
+    vertices_map = defaultdict(lambda: None)
+    v_counter = 0
+    for i in range(graph.num_nodes):
+        if i in vertices:
+            vertices_map[i] = v_counter
+            v_counter += 1
+            if graph.x is not None:
+                new_graph.x.append(graph.x[i])
+
+    for i in range(graph.edge_index.shape[1]):
+        if int(graph.edge_index[0][i]) in vertices and int(graph.edge_index[1][i]) in vertices:
+            new_graph.edge_index[0].append(vertices_map[int(graph.edge_index[0][i])])
+            new_graph.edge_index[1].append(vertices_map[int(graph.edge_index[1][i])])
+            if graph.edge_attr is not None:
+                new_graph.edge_attr.append(graph.edge_attr[i])
+
+    if graph.x is not None:
+        new_graph.x = stack(new_graph.x)
+    if graph.edge_attr is not None:
+        new_graph.edge_attr = stack(new_graph.edge_attr)
+    new_graph.edge_index = tensor(new_graph.edge_index)
+    return new_graph
+
+
 class TransforToKWl(BaseTransform):
     def __init__(self, k: int, turbo=False, max_group_size=500, agg_function_features: str = 'cat', set_based=False,
                  modify=False, connected=False, super_connected=False, compute_attributes=True):
-        if not 2 <= k <= 3:
-            raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
+        # if not 2 <= k <= 3:
+        #     raise NotImplementedError('k-WL: k can be only 2 or 3 at the moment')
         self.k = k
         self.set_based = set_based
         self.modify = modify
@@ -133,7 +166,7 @@ class TransforToKWl(BaseTransform):
         else:
             raise ValueError('agg_function_features must be mode or cat', agg_function_features)
         self.nan_tensor_edge_features = None
-        self.last_processed_data = None
+        self.last_processed_data = []
 
     def safe_cat(self, selected_attrs: list, edge=True):
         if edge and len(selected_attrs) < self.num_edge_repeat:
@@ -254,11 +287,20 @@ class TransforToKWl(BaseTransform):
         return diff_pos + 1
 
     def graph_to_k_wl_graph(self, graph, return_mapping=None, override_modify=None):
-        self.last_processed_data = graph
+        self.last_processed_data.append(graph)
         if override_modify is not None:
             local_modify = override_modify
         else:
             local_modify = self.modify
+        if self.uses_turbo and self.k == 1:
+            if graph.x is None:
+                graph.x = tensor([1]*graph.num_nodes)
+            else:
+                graph.x = pad(graph.x, pad=(0, 1), value=1)
+            graph.iso_type_1 = tensor([1] * graph.num_nodes)
+            graph.edge_index_1 = graph.edge_index
+            graph.edge_attr_1 = graph.edge_attr
+            return graph, [(x,) for x in return_mapping]
         vert_num = graph.num_nodes
         num_edges = graph.edge_index.shape[1]
         self.k_wl_vertices_num[vert_num] += 1
@@ -336,10 +378,9 @@ class TransforToKWl(BaseTransform):
             else:
                 new_x[i] = tensor(k_x).long()
 
-        graph[f'iso_type_{self.k}'] = stack(new_x).squeeze(dim=1)
+        graph['iso_type' + ("" if local_modify else f"_{self.k}")] = stack(new_x).squeeze(dim=1)
         if local_modify:
             graph.num_nodes = len(all_combinations)
-            graph.x = graph[f'iso_type_{self.k}']
 
         if len(new_edges[0]) > 0:
             new_edge_attr = stack(new_edge_attr)
@@ -367,7 +408,7 @@ class TransforToKWl(BaseTransform):
         return graph
 
     def __call__(self, data: Data) -> Data:
-        self.last_processed_data = None
+        self.last_processed_data = []
         self.stats_triangle_counts.append(get_number_of_triangles(data))
         self.processed_num += 1
         if self.processed_num % 100 == 0:
@@ -413,34 +454,6 @@ class TransforToKWl(BaseTransform):
         #           'wt') as f:
         #     f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
 
-    def get_subgraph(self, graph, vertices):
-        new_graph = type(graph)()
-        new_graph.num_nodes = len(vertices)
-        new_graph.x = []
-        if graph.edge_attr is not None:
-            new_graph.edge_attr = []
-        new_graph.edge_index = ([], [])
-        vertices_map = defaultdict(lambda: None)
-        v_counter = 0
-        for i in range(graph.num_nodes):
-            if i in vertices:
-                vertices_map[i] = v_counter
-                v_counter += 1
-                new_graph.x.append(graph.x[i])
-
-        for i in range(graph.edge_index.shape[1]):
-            if int(graph.edge_index[0][i]) in vertices and int(graph.edge_index[1][i]) in vertices:
-                new_graph.edge_index[0].append(vertices_map[int(graph.edge_index[0][i])])
-                new_graph.edge_index[1].append(vertices_map[int(graph.edge_index[1][i])])
-                if graph.edge_attr is not None:
-                    new_graph.edge_attr.append(graph.edge_attr[i])
-
-        new_graph.x = stack(new_graph.x)
-        if graph.edge_attr is not None:
-            new_graph.edge_attr = stack(new_graph.edge_attr)
-        new_graph.edge_index = tensor(new_graph.edge_index)
-        return new_graph
-
     @staticmethod
     def save_picture_of_graph(graph, name):
         plt.clf()
@@ -463,7 +476,7 @@ class TransforToKWl(BaseTransform):
         new_graph = copy.deepcopy(graph)
 
         # get all subgraphs detected by BCC and convert them using k-WL algorithm
-        processed_subgraphs = [self.graph_to_k_wl_graph(self.get_subgraph(graph, g), g, override_modify=False) for g in
+        processed_subgraphs = [self.graph_to_k_wl_graph(get_subgraph(graph, g), g, override_modify=False) for g in
                                groups]
         # create mapping between vertices of new graph and vertices in old graph. Left side is old vertex index.
         # Only for vertices not in any subgraph!
@@ -483,10 +496,9 @@ class TransforToKWl(BaseTransform):
 
         new_graph.num_nodes = sum([g[f'iso_type_{self.k}'].shape[0] for g, _ in processed_subgraphs]) \
                               + graph.num_nodes - sum(vertices_in_components.values())
-        new_graph.x = []
-        new_graph.edge_attr = []
-        new_graph.edge_index = ([], [])
-
+        new_graph['x'] = []
+        new_graph['edge_attr'] = []
+        new_graph['edge_index'] = ([], [])
         assignment_index = [[-1] * len(old_vertex_not_in_subgraphs),
                             [-1] * len(old_vertex_not_in_subgraphs)]
 
@@ -591,7 +603,7 @@ class TransforToKWl(BaseTransform):
             #                         new_graph.edge_index[0].append(i_v)
             #                         new_graph.edge_index[1].append(j_v)
             already_processed_old_vertices.extend(groups[sub_i])
-        new_graph.x = stack(new_graph.x)
+        new_graph['x'] = stack([tensor(i) for i in new_graph.x])
 
         if self.compute_attributes:
             new_graph.edge_attr = stack(new_graph.edge_attr)
@@ -616,6 +628,12 @@ class TransforToKWl(BaseTransform):
             if self.compute_attributes:
                 graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
             graph[f'edge_index_{self.k}'] = new_graph.edge_index
+            if self.k == 1:
+                graph['edge_index_2'] = graph.edge_index_1
+                graph['assignment_index_2'] = graph.assignment_index_1
+                graph['iso_type_2'] = graph.iso_type_1
+                if self.compute_attributes:
+                    graph['edge_attr_2'] = graph.edge_attr_1
             return graph
 
     def add_dimensions_to_graph_without_modifying(self, data):
