@@ -43,7 +43,7 @@ def get_transform(args, split=None):
         transforms.append(DropFeatures(emb_dim))
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
-    if args.transform_k_wl:
+    if args.transform_k_wl > 0:
         if args.sequential_k_wl and int(args.transform_k_wl) == 3:
             transforms.append(TransforToKWl(k=2,
                                             turbo=args.k_wl_turbo,
