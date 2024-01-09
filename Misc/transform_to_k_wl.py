@@ -23,8 +23,6 @@ from Misc.biconnected_components_finder import BiconnectedComponents
 from Misc.graph_visualizations import visualize
 
 
-
-
 def edge_in_same_group(groups, simple_v, i, j):
     for g in groups:
         if i in g and j in g:
@@ -35,6 +33,8 @@ def edge_in_same_group(groups, simple_v, i, j):
 
 
 def k_wl_sequential_layers(n, k):
+    if k == 1:
+        k = 2
     d = ceil(n / k)
     o = list(range(d, n, d))[:k - 1]
     if len(o) < k - 1:
@@ -294,7 +294,7 @@ class TransforToKWl(BaseTransform):
             local_modify = self.modify
         if self.uses_turbo and self.k == 1:
             if graph.x is None:
-                graph.x = tensor([1]*graph.num_nodes)
+                graph.x = tensor([1] * graph.num_nodes)
             else:
                 if isinstance(graph.x, list):
                     graph.x = tensor(graph.x)
@@ -610,6 +610,8 @@ class TransforToKWl(BaseTransform):
         if self.compute_attributes:
             new_graph.edge_attr = stack(new_graph.edge_attr)
         new_graph.edge_index = tensor(new_graph.edge_index)
+        if len(new_graph.x.shape) == 1:
+            new_graph['x'] = torch.unsqueeze(new_graph.x, 1)
         if not new_graph.x.shape[0] == max(new_graph[f'assignment_index_{self.k}'][1]) + 1:
             print(new_graph.x.shape[0])
             print('assignment max', max(new_graph[f'assignment_index_{self.k}'][1]))
@@ -629,13 +631,15 @@ class TransforToKWl(BaseTransform):
 
             if self.compute_attributes:
                 graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
+            else:
+                graph[f'edge_attr_{self.k}'] = zeros((new_graph.edge_index.shape[1], 1))
             graph[f'edge_index_{self.k}'] = new_graph.edge_index
-            if self.k == 1:
-                graph['edge_index_2'] = graph.edge_index_1
-                graph['assignment_index_2'] = graph.assignment_index_1
-                graph['iso_type_2'] = graph.iso_type_1
-                if self.compute_attributes:
-                    graph['edge_attr_2'] = graph.edge_attr_1
+            # if self.k == 1:
+            #     graph['edge_index_2'] = graph.edge_index_1
+            #     graph['assignment_index_2'] = graph.assignment_index_1
+            #     graph['iso_type_2'] = graph.iso_type_1
+            #     if self.compute_attributes:
+            #         graph['edge_attr_2'] = graph.edge_attr_1
             return graph
 
     def add_dimensions_to_graph_without_modifying(self, data):

@@ -104,7 +104,7 @@ class GNN(torch.nn.Module):
         new_mlp = ModuleList([])
         new_mlp.requires_grad = False
         if self.sequential_k_wl:
-            in_emb = self.emb_dim * self.k_wl
+            in_emb = self.emb_dim * (self.k_wl if self.k_wl > 1 else 2)
         else:
             in_emb = self.emb_dim
 
