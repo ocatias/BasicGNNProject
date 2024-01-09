@@ -39,6 +39,8 @@ class GNN(torch.nn.Module):
         self.num_mlp_layers = num_mlp_layers
         self.sequential_k_wl = sequential_k_wl
         self.k_wl = k_wl
+        if self.k_wl == 0:
+            self.sequential_k_wl = False
         if self.sequential_k_wl and num_layer < self.k_wl:
             raise ValueError('number of GNN layers while using sequential k-gnn must be at least k')
 

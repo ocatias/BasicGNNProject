@@ -150,7 +150,7 @@ def load_dataset(args, config, cross_val_i):
         # datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     else:
         raise NotImplementedError("Unknown dataset")
-    if args.sequential_k_wl and int(args.transform_k_wl) > 1:
+    if args.sequential_k_wl and int(args.transform_k_wl) + int(args.k_wl_turbo) > 1:
         train_loader = DataLoaderCustom(datasets[0], batch_size=args.batch_size, shuffle=True)
         val_loader = DataLoaderCustom(datasets[1], batch_size=args.batch_size, shuffle=False)
         test_loader = DataLoaderCustom(datasets[2], batch_size=args.batch_size, shuffle=False)
