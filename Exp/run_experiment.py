@@ -185,7 +185,7 @@ def evaluate_params(param_dict, hyperparams_path):
     result_dict = run(param_dict)
     output_path = os.path.join(hyperparams_path, f"params_{len(glob.glob(os.path.join(hyperparams_path, '*')))}.json")
     storage_dict = {"params": param_dict}
-    storage_dict.update(copy.deepcopy(result_dict))
+    # storage_dict.update(copy.deepcopy(result_dict))
 
     with open(output_path, "w") as file:
         json.dump(storage_dict, file, indent=4)
