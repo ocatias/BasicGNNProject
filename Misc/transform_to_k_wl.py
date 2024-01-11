@@ -98,11 +98,11 @@ def mapping_to_assignment_index(m, offset=0):
 
 def get_subgraph(graph, vertices):
     new_graph = type(graph)()
-    new_graph.num_nodes = len(vertices)
-    new_graph.x = []
+    new_graph['num_nodes'] = len(vertices)
+    new_graph['x'] = []
     if graph.edge_attr is not None:
-        new_graph.edge_attr = []
-    new_graph.edge_index = ([], [])
+        new_graph['edge_attr'] = []
+    new_graph['edge_index'] = ([], [])
     vertices_map = defaultdict(lambda: None)
     v_counter = 0
     for i in range(graph.num_nodes):
@@ -120,10 +120,10 @@ def get_subgraph(graph, vertices):
                 new_graph.edge_attr.append(graph.edge_attr[i])
 
     if graph.x is not None:
-        new_graph.x = stack(new_graph.x)
+        new_graph['x'] = stack(new_graph.x)
     if graph.edge_attr is not None:
-        new_graph.edge_attr = stack(new_graph.edge_attr)
-    new_graph.edge_index = tensor(new_graph.edge_index)
+        new_graph['edge_attr'] = stack(new_graph.edge_attr)
+    new_graph['edge_index'] = tensor(new_graph.edge_index)
     return new_graph
 
 
