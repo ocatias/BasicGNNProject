@@ -506,7 +506,7 @@ class TransforToKWl(BaseTransform):
 
         # add simple elements of graph first
         for i, v in enumerate(old_vertex_not_in_subgraphs):
-            if self.compute_attributes:
+            if self.compute_attributes and graph.x is not None:
                 # add padding to x and edge attr because the subgraphs added later have one dimension more
                 new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
             else:
