@@ -17,4 +17,4 @@ class CountTriangles(BaseTransform):
         return data
 
     def __repr__(self) -> str:
-        return (f'{self.__class__.__name__}(count_triangles)')
+        return (f'{self.__class__.__name__}')

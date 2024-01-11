@@ -21,4 +21,4 @@ class PadNodeAttr(BaseTransform):
         return data
 
     def __repr__(self) -> str:
-        return (f'{self.__class__.__name__}(node_attr_size={self.node_attr_size})')
+        return (f'{self.__class__.__name__}(s={self.node_attr_size})')
