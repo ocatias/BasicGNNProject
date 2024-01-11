@@ -99,10 +99,10 @@ def mapping_to_assignment_index(m, offset=0):
 def get_subgraph(graph, vertices):
     new_graph = type(graph)()
     new_graph['num_nodes'] = len(vertices)
-    new_graph['x'] = []
+    x = []
     if graph.edge_attr is not None:
-        new_graph['edge_attr'] = []
-    new_graph['edge_index'] = ([], [])
+        edge_attr = []
+    edge_index = ([], [])
     vertices_map = defaultdict(lambda: None)
     v_counter = 0
     for i in range(graph.num_nodes):
@@ -110,20 +110,20 @@ def get_subgraph(graph, vertices):
             vertices_map[i] = v_counter
             v_counter += 1
             if graph.x is not None:
-                new_graph.x.append(graph.x[i])
+                x.append(graph.x[i])
 
     for i in range(graph.edge_index.shape[1]):
         if int(graph.edge_index[0][i]) in vertices and int(graph.edge_index[1][i]) in vertices:
-            new_graph.edge_index[0].append(vertices_map[int(graph.edge_index[0][i])])
-            new_graph.edge_index[1].append(vertices_map[int(graph.edge_index[1][i])])
+            edge_index[0].append(vertices_map[int(graph.edge_index[0][i])])
+            edge_index[1].append(vertices_map[int(graph.edge_index[1][i])])
             if graph.edge_attr is not None:
-                new_graph.edge_attr.append(graph.edge_attr[i])
+                edge_attr.append(graph.edge_attr[i])
 
-    if graph.x is not None:
-        new_graph['x'] = stack(new_graph.x)
+    if len(x) > 0:
+        new_graph['x'] = stack(x)
     if graph.edge_attr is not None:
-        new_graph['edge_attr'] = stack(new_graph.edge_attr)
-    new_graph['edge_index'] = tensor(new_graph.edge_index)
+        new_graph['edge_attr'] = stack(edge_attr)
+    new_graph['edge_index'] = tensor(edge_index)
     return new_graph
 
 
