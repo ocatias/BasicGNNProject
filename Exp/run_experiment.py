@@ -336,7 +336,6 @@ def find_eval_params(args, grid, split):
             evaluate_params(param_dict, hyperparams_path)
 
         except Exception as e:
-            raise e
             nr_prev_errors = store_error(e, errors_path, "hyperparam_search", {"params": param_dict})
             print(e.__str__())
             if nr_prev_errors > allowed_nr_errors:
