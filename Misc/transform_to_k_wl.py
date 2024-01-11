@@ -442,14 +442,14 @@ class TransforToKWl(BaseTransform):
                 f'(fp={self.agg_function_features_name})'
                 f'(set={self.set_based})(con={self.connected})')
 
-    def __del__(self):
-        print('number of vertices in graphs', self.vertices_num)
-        print('number of vertices processed by k-WL', self.k_wl_vertices_num)
-        print('number of graphs reduced to what', self.vertices_reduction)
-        print('average_num_of_vertices', self.average_num_of_vertices)
-        print('average_num_of_new_vertices', self.average_num_of_new_vertices)
-        print('triangle counts', self.stats_triangle_counts)
-        print('last processed data', self.last_processed_data)
+    # def __del__(self):
+    #     print('number of vertices in graphs', self.vertices_num)
+    #     print('number of vertices processed by k-WL', self.k_wl_vertices_num)
+    #     print('number of graphs reduced to what', self.vertices_reduction)
+    #     print('average_num_of_vertices', self.average_num_of_vertices)
+    #     print('average_num_of_new_vertices', self.average_num_of_new_vertices)
+    #     print('triangle counts', self.stats_triangle_counts)
+    #     print('last processed data', self.last_processed_data)
         # print('number of triangles and isomorphism:',
         #       list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
         # with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
