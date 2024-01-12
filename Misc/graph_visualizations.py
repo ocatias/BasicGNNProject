@@ -50,5 +50,5 @@ def visualize(data, name, labels=None, colors=None, v_feat_dim=None, e_feat_dim=
 
     nx.draw_kamada_kawai(G, node_color=color_map_vertices, edge_color=color_map_edges, with_labels=True,
                          font_weight='bold', arrows=True, labels=labels)
-    plt.savefig(f'pictures/{name}.png')
+    plt.savefig(f'../pictures/{name}.png')
     plt.close()

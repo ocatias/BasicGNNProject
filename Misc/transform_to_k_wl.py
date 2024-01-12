@@ -146,6 +146,10 @@ class TransforToKWl(BaseTransform):
         self.range_k = list(range(k))
         self.matrices = {}
         self.uses_turbo = turbo
+        if self.uses_turbo and  self.compute_attributes:
+            raise ValueError('k-wl turbo and compute attributes is not compatible')
+        if self.uses_turbo and  self.modify:
+            raise ValueError('k-wl turbo and modify (not using sequantial) is not compatible')
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
         self.vertices_num = defaultdict(int)
@@ -506,11 +510,11 @@ class TransforToKWl(BaseTransform):
 
         # add simple elements of graph first
         for i, v in enumerate(old_vertex_not_in_subgraphs):
-            if self.compute_attributes and graph.x is not None:
-                # add padding to x and edge attr because the subgraphs added later have one dimension more
-                new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
-            else:
-                new_graph.x.append(tensor((0)))
+            # if self.compute_attributes and graph.x is not None:
+            #     # add padding to x and edge attr because the subgraphs added later have one dimension more
+            #     new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
+            # else:
+            new_graph.x.append(tensor((0)))
             assignment_index[0][i] = v
             assignment_index[1][i] = i
         for _, m in processed_subgraphs:
@@ -518,11 +522,11 @@ class TransforToKWl(BaseTransform):
             assignment_index[0].extend(m_i[0])
             assignment_index[1].extend(m_i[1])
         new_graph[f'assignment_index_{self.k}'] = tensor(assignment_index)
-        for i, (x, y) in enumerate(zip(*graph.edge_index.tolist())):
-            if x in old_vertex_not_in_subgraphs and y in old_vertex_not_in_subgraphs:
-                if self.compute_attributes:
-                    new_graph.edge_attr.append(pad(graph.edge_attr[i], pad=(1, 0), value=0))
-                # TODO uncomment this to have edges between old vertices
+        # TODO uncomment this to have edges between old vertices
+        # for i, (x, y) in enumerate(zip(*graph.edge_index.tolist())):
+        #     if x in old_vertex_not_in_subgraphs and y in old_vertex_not_in_subgraphs:
+                # if self.compute_attributes:
+                #     new_graph.edge_attr.append(pad(graph.edge_attr[i], pad=(1, 0), value=0))
                 # new_graph.edge_index[0].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[x]))
                 # new_graph.edge_index[1].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[y]))
 
@@ -538,8 +542,8 @@ class TransforToKWl(BaseTransform):
             # adding vertexes and intra subgraph edges
             starting_id = len(new_graph.x)
             new_graph.x.extend(list(subgraph[f'iso_type_{self.k}']))
-            if self.compute_attributes:
-                new_graph.edge_attr.extend(list(subgraph[f'edge_attr_{self.k}']))
+            # if self.compute_attributes:
+            #     new_graph.edge_attr.extend(list(subgraph[f'edge_attr_{self.k}']))
             for i, j in zip(*subgraph[f'edge_index_{self.k}']):
                 new_graph.edge_index[0].append(i + starting_id)
                 new_graph.edge_index[1].append(j + starting_id)
@@ -606,9 +610,9 @@ class TransforToKWl(BaseTransform):
             #                         new_graph.edge_index[1].append(j_v)
             already_processed_old_vertices.extend(groups[sub_i])
         new_graph['x'] = stack([tensor(i) for i in new_graph.x])
-
-        if self.compute_attributes:
-            new_graph.edge_attr = stack(new_graph.edge_attr)
+        #
+        # if self.compute_attributes:
+        #     new_graph.edge_attr = stack(new_graph.edge_attr)
         new_graph.edge_index = tensor(new_graph.edge_index)
         if len(new_graph.x.shape) == 1:
             new_graph['x'] = torch.unsqueeze(new_graph.x, 1)
@@ -666,15 +670,17 @@ class TransforToKWl(BaseTransform):
 if __name__ == '__main__':
     with open('../debug/graph_20_02.pkl', 'rb') as file:
         data = pickle.load(file)
-    transform = TransforToKWl(3, set_based=True, modify=False)
+    transform = TransforToKWl(1, set_based=True, turbo=True, modify=False, compute_attributes=False)
 
     from sknetwork.data import house
 
     print(data)
-    # data = transform.graph_from_adj(house())
+    # data = graph_from_adj(house())
     visualize(data, 'transformed_before')  # , labels=[0, 1, 2, 3, 4], figsize=(3, 3))
-    transformed_data = transform.graph_to_k_wl_graph(data)
+    transformed_data = transform(data)
     print(transformed_data)
+    print(transformed_data.x)
+    print(transformed_data.iso_type_1)
     # print(transformed_data.edge_attr)
     # pprint(list(zip(mapping, transformed_data.x)))
-    # visualize(transformed_data, 'transformed_k=2', labels=mapping, e_feat_dim=0)
+    visualize(transformed_data, 'transformed_turbo')
