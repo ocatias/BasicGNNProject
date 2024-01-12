@@ -50,7 +50,8 @@ def get_transform(args, split=None):
                                             max_group_size=args.k_wl_turbo_max_group_size,
                                             agg_function_features=args.k_wl_pool_function,
                                             set_based=bool(args.k_wl_set_based),
-                                            modify=not bool(args.sequential_k_wl)))
+                                            modify=not bool(args.sequential_k_wl),
+                                            compute_attributes=False))
         transforms.append(TransforToKWl(k=args.transform_k_wl,
                                         turbo=args.k_wl_turbo,
                                         max_group_size=args.k_wl_turbo_max_group_size,
@@ -58,7 +59,7 @@ def get_transform(args, split=None):
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl),
                                         connected=args.connected_k_wl_last_k,
-                                        compute_attributes=args.dataset.lower() != 'imdb-binary'))
+                                        compute_attributes=not bool(args.sequential_k_wl)))
 
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
