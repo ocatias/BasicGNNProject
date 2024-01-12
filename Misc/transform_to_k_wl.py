@@ -146,9 +146,9 @@ class TransforToKWl(BaseTransform):
         self.range_k = list(range(k))
         self.matrices = {}
         self.uses_turbo = turbo
-        if self.uses_turbo and  self.compute_attributes:
+        if self.uses_turbo and self.compute_attributes:
             raise ValueError('k-wl turbo and compute attributes is not compatible')
-        if self.uses_turbo and  self.modify:
+        if self.uses_turbo and self.modify:
             raise ValueError('k-wl turbo and modify (not using sequantial) is not compatible')
         self.average_num_of_vertices = 0
         self.average_num_of_new_vertices = 0
@@ -454,11 +454,11 @@ class TransforToKWl(BaseTransform):
     #     print('average_num_of_new_vertices', self.average_num_of_new_vertices)
     #     print('triangle counts', self.stats_triangle_counts)
     #     print('last processed data', self.last_processed_data)
-        # print('number of triangles and isomorphism:',
-        #       list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
-        # with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
-        #           'wt') as f:
-        #     f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
+    # print('number of triangles and isomorphism:',
+    #       list(zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)))
+    # with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
+    #           'wt') as f:
+    #     f.writelines([str(x) for x in zip(self.stats_triangle_counts, self.stats_isomorphism_indexes)])
 
     @staticmethod
     def save_picture_of_graph(graph, name):
@@ -503,7 +503,7 @@ class TransforToKWl(BaseTransform):
         new_graph.num_nodes = sum([g[f'iso_type_{self.k}'].shape[0] for g, _ in processed_subgraphs]) \
                               + graph.num_nodes - sum(vertices_in_components.values())
         new_graph['x'] = []
-        new_graph['edge_attr'] = []
+        # new_graph['edge_attr'] = []
         new_graph['edge_index'] = ([], [])
         assignment_index = [[-1] * len(old_vertex_not_in_subgraphs),
                             [-1] * len(old_vertex_not_in_subgraphs)]
@@ -525,10 +525,10 @@ class TransforToKWl(BaseTransform):
         # TODO uncomment this to have edges between old vertices
         # for i, (x, y) in enumerate(zip(*graph.edge_index.tolist())):
         #     if x in old_vertex_not_in_subgraphs and y in old_vertex_not_in_subgraphs:
-                # if self.compute_attributes:
-                #     new_graph.edge_attr.append(pad(graph.edge_attr[i], pad=(1, 0), value=0))
-                # new_graph.edge_index[0].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[x]))
-                # new_graph.edge_index[1].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[y]))
+        # if self.compute_attributes:
+        #     new_graph.edge_attr.append(pad(graph.edge_attr[i], pad=(1, 0), value=0))
+        # new_graph.edge_index[0].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[x]))
+        # new_graph.edge_index[1].append(tensor(old_vertex_to_new_vertex_mapping_no_subgraps[y]))
 
         # add subgraphs one by one with all their connections
         # skipping connections to vertices not yet in graph
@@ -628,15 +628,16 @@ class TransforToKWl(BaseTransform):
             print(new_graph[f"assignment_index_{self.k}"])
             raise ValueError(f'values dont match {new_graph.x.shape, max(new_graph[f"assignment_index_{self.k}"][1])}')
         if self.modify:
+            new_graph.edge_attr = zeros((new_graph.edge_index.shape[1], 1))
             return new_graph
         else:
             graph[f'iso_type_{self.k}'] = new_graph.x
             graph[f'assignment_index_{self.k}'] = new_graph[f'assignment_index_{self.k}']
 
-            if self.compute_attributes:
-                graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
-            else:
-                graph[f'edge_attr_{self.k}'] = zeros((new_graph.edge_index.shape[1], 1))
+            # if self.compute_attributes:
+            #     graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
+            # else:
+            graph[f'edge_attr_{self.k}'] = zeros((new_graph.edge_index.shape[1], 1))
             graph[f'edge_index_{self.k}'] = new_graph.edge_index
             # if self.k == 1:
             #     graph['edge_index_2'] = graph.edge_index_1
@@ -652,7 +653,12 @@ class TransforToKWl(BaseTransform):
                                                                               dtype=int8)
         else:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
-        data['x' + ("" if self.modify else f"_{self.k}")] = pad(data.x, pad=(1, 0, 0, 0), value=0)
+        if not self.modify:
+            data[f"edge_attr_{self.k}"] = empty((0, 1), dtype=int8)
+        if self.compute_attributes:
+            data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x, pad=(1, 0, 0, 0), value=0)
+        else:
+            data['x' if self.modify else f"iso_type_{self.k}"] = zeros((data.num_nodes, 1))
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))])
@@ -661,9 +667,9 @@ class TransforToKWl(BaseTransform):
                                                                             pad=(0, (self.num_edge_repeat - 1) * (
                                                                                     data.edge_attr.shape[1] - 1)),
                                                                             value=0)
-            data['x' + ("" if self.modify else f"_{self.k}")] = pad(data.x,
-                                                                    pad=(0, (self.k - 1) * (data.x.shape[1] - 1)),
-                                                                    value=0)
+            data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x,
+                                                                     pad=(0, (self.k - 1) * (data.x.shape[1] - 1)),
+                                                                     value=0)
         return data
 
 
