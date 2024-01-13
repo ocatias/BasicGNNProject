@@ -662,7 +662,7 @@ class TransforToKWl(BaseTransform):
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))])
-        if self.agg_function_features_name == 'cat':
+        if self.agg_function_features_name == 'cat' and not self.uses_turbo and not self.modify:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr,
                                                                             pad=(0, (self.num_edge_repeat - 1) * (
                                                                                     data.edge_attr.shape[1] - 1)),
