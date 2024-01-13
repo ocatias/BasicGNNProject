@@ -24,7 +24,6 @@ class GNN(torch.nn.Module):
 
         super(GNN, self).__init__()
 
-        print("Old GNN implementation.")
 
         self.num_layer = num_layer
         self.drop_ratio = drop_ratio

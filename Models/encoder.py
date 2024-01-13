@@ -38,7 +38,6 @@ class NodeEncoder(torch.nn.Module):
                     # the first two positions are not repeating
                     x_embedding += self.atom_embedding_list[(i - 2) % (self.len_embedding_list - 2) + 2](x[:, i])
                 else:
-                    print(x[:, i])
                     x_embedding += self.atom_embedding_list[i](x[:, i])
         if self.k_wl_separate:
             if not isinstance(x_embedding, int):
