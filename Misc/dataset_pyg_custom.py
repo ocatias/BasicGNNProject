@@ -282,6 +282,9 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                     data_list.extend(uncolate(data_p, slices_p))
             else:
                 data_list = [self.pre_transform(data) for data in data_list]
+        for i, d in enumerate(data_list):
+            if 80 < i < 90:
+                print(d)
         data, slices = self.collate(data_list)
         print('Saving...')
         torch.save((data, slices), self.processed_paths[0])
