@@ -2,6 +2,8 @@ import torch
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 from torch import cat, zeros_like
 
+from Models.utils import device
+
 
 class NodeEncoder(torch.nn.Module):
 
@@ -118,7 +120,7 @@ class KWlEmbeddings(torch.nn.Module):
     def __init__(self, k, emb_dim):
         super(KWlEmbeddings, self).__init__()
         self.emb = torch.nn.Embedding(k ** 2, emb_dim)
-        self.emb.to(0)
+        self.emb.to(device())
         self.emb_dim = emb_dim
         torch.nn.init.xavier_uniform_(self.emb.weight.data)
 

@@ -14,7 +14,7 @@ from torch_scatter import scatter_mean
 from Misc.transform_to_k_wl import k_wl_sequential_layers
 from Misc.utils import num_connected_components
 from Models.encoder import KWlEmbeddings, NodeEncoder
-from Models.utils import avg_pool_custom
+from Models.utils import avg_pool_custom, device
 
 
 ### GAT
@@ -143,7 +143,7 @@ class GNN_node(torch.nn.Module):
         if self.sequential_k_wl:
             self.k_wl_embeddings = [NodeEncoder(emb_dim, feature_dims=[10] * 10) for k in range(1 if self.k_wl == 1 else 2, self.k_wl + 1)]
             for e in self.k_wl_embeddings:
-                e.to(0)
+                e.to(device())
             #
         for layer in range(num_layer):
             if self.sequential_k_wl and layer in k_wl_sequential_layers(num_layer, self.k_wl):

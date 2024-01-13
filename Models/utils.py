@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool, global_add_pool
@@ -47,6 +49,14 @@ def get_graph_norm(norm):
     else:
         raise ValueError(f'Graph Normalisation {norm} not currently supported')
 
+
 def avg_pool_custom(x, assignment):
     row, col = assignment
     return scatter_mean(x[row], col, dim=0)
+
+
+def device():
+    d = os.environ['DEVICE']
+    if d.isdecimal():
+        d = int(d)
+    return d
