@@ -44,6 +44,10 @@ def get_transform(args, split=None):
     if args.dataset.lower() == "csl":
         transforms.append(OneHotDegree(5))
     if args.transform_k_wl > 0:
+        if args.sequential_k_wl and args.k_wl_pool_function == 'cat':
+            raise ValueError('k-wl sequential and pool function "cat" cant be used together')
+        if args.k_wl_turbo > 0 and args.k_wl_pool_function == 'cat':
+            raise ValueError('k-wl turbo and pool function "cat" cant be used together')
         if args.sequential_k_wl and int(args.transform_k_wl) == 3:
             transforms.append(TransforToKWl(k=2,
                                             turbo=args.k_wl_turbo,
