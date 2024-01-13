@@ -198,7 +198,6 @@ class GNN_node(torch.nn.Module):
             if layer in k_wl_layers:
                 current_k_wl += 1
                 k_wl_h.append(scatter_mean(h, seq_batch[k_wl_layers.index(layer)], dim=0))
-                # TODO check why this worked with the wrong h instead of h_list
                 h = avg_pool_custom(h_list[k_wl_layers[0] - 1], seq_assignment_index[k_wl_layers.index(layer)])
                 h = torch.cat([h, seq_x[k_wl_layers.index(layer)]], dim=1)
             h = self.convs[layer](h,

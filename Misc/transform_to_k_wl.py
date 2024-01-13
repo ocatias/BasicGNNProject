@@ -654,7 +654,7 @@ class TransforToKWl(BaseTransform):
         else:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
         if not self.modify:
-            data[f"edge_attr_{self.k}"] = empty((0, 1), dtype=int8)
+            data[f"edge_attr_{self.k}"] = zeros((data.edge_index.shape[1], 1), dtype=int8)
         if self.compute_attributes:
             data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x, pad=(1, 0, 0, 0), value=0)
         else:
