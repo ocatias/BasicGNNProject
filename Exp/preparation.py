@@ -169,17 +169,17 @@ def load_dataset(args, config, cross_val_i):
     return train_loader, val_loader, test_loader
 
 
-def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_transform, k_wl_separate_embedding):
+def get_model(args, num_classes, num_vertex_features, num_tasks):
     node_feature_dims = []
-
     model = args.model.lower()
     if args.dataset.lower() == "zinc" and not args.do_drop_feat:
         node_feature_dims.append(21)
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims,
-                                   uses_k_wl_transform=uses_k_wl_transform,
-                                   k_wl_separate=k_wl_separate_embedding)
-        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[4], uses_k_wl_transform=uses_k_wl_transform,
-                                   k_wl_separate=k_wl_separate_embedding)
+                                   uses_k_wl_transform=args.transform_k_wl,
+                                   k_wl_separate=bool(args.k_wl_separate_embedding))
+        edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[4],
+                                   uses_k_wl_transform=not bool(args.k_wl_set_based) and args.transform_k_wl > 0,
+                                   k_wl_separate=bool(args.k_wl_separate_embedding))
     elif args.dataset.lower() in ["ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace",
                                   "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast",
                                   "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
@@ -188,18 +188,18 @@ def get_model(args, num_classes, num_vertex_features, num_tasks, uses_k_wl_trans
         print("node_feature_dims: ", node_feature_dims)
         node_encoder, edge_encoder = \
             NodeEncoder(args.emb_dim, feature_dims=node_feature_dims,
-                        uses_k_wl_transform=uses_k_wl_transform,
-                        k_wl_separate=k_wl_separate_embedding), \
+                        uses_k_wl_transform=args.transform_k_wl,
+                        k_wl_separate=bool(args.k_wl_separate_embedding)), \
                 EdgeEncoder(args.emb_dim,
-                            uses_k_wl_transform=uses_k_wl_transform,
-                            k_wl_separate=k_wl_separate_embedding)
+                            uses_k_wl_transform=not bool(args.k_wl_set_based) and args.transform_k_wl > 0,
+                            k_wl_separate=bool(args.k_wl_separate_embedding))
     elif args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 300, 100, 100, 100, 100, 100, 100],
-                                   uses_k_wl_transform=uses_k_wl_transform,
-                                   k_wl_separate=k_wl_separate_embedding)
+                                   uses_k_wl_transform=args.transform_k_wl,
+                                   k_wl_separate=bool(args.k_wl_separate_embedding))
         edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 100, 100, 100],
-                                   uses_k_wl_transform=uses_k_wl_transform,
-                                   k_wl_separate=k_wl_separate_embedding)
+                                   uses_k_wl_transform=not bool(args.k_wl_set_based) and args.transform_k_wl > 0,
+                                   k_wl_separate=bool(args.k_wl_separate_embedding))
 
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x

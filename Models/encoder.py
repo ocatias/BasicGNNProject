@@ -52,7 +52,7 @@ class NodeEncoder(torch.nn.Module):
                 else:
                     return cat((k_wl_embedding, zeros_like(k_wl_embedding)), dim=1)
             else:
-                return x_embedding
+                return x_embedding + k_wl_embedding
         except Exception as e:
             print('feature dims', self.feature_dims)
             print('len feature dims', len(self.feature_dims))
