@@ -19,10 +19,10 @@ class AddZeroEdgeAttr(BaseTransform):
         if 'edge_attr' in data:
             if self.edge_attr_size == 0 and data.edge_attr.shape[1] > 0:
                 return data
-            data['edge_attr'] = cat([torch.zeros((data.edge_index.shape[1], self.edge_attr_size)), data.edge_attr],
+            data['edge_attr'] = cat([torch.zeros((data.edge_index.shape[1], max(self.edge_attr_size,1 ))), data.edge_attr],
                                     dim=1).long()
         else:
-            data['edge_attr'] = torch.zeros((data.edge_index.shape[1], self.edge_attr_size))
+            data['edge_attr'] = torch.zeros((data.edge_index.shape[1], max(self.edge_attr_size,1 )))
 
         return data
 
@@ -58,9 +58,9 @@ class AddZeroNodeAttr(BaseTransform):
             # only add attribute ib there are none
             if self.node_attr_size == 0 and data.x.shape[1] > 0:
                 return data
-            data['x'] = cat([torch.zeros((data.num_nodes, self.node_attr_size)), data.x], dim=1).long()
+            data['x'] = cat([torch.zeros((data.num_nodes, max(self.node_attr_size,1 ))), data.x], dim=1).long()
         else:
-            data['x'] = torch.zeros((data.num_nodes, self.node_attr_size))
+            data['x'] = torch.zeros((data.num_nodes, max(self.node_attr_size,1 )))
         return data
 
     def __repr__(self) -> str:

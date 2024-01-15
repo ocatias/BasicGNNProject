@@ -38,7 +38,7 @@ class NodeEncoder(torch.nn.Module):
     def forward(self, x, k_wl=0):
         x_embedding = 0
         x = x.long()
-        k_wl_embedding = 0
+        k_wl_embedding = None
         try:
             for i in range(x.shape[1]):
                 if k_wl > 0 and i == 0 and self.uses_k_wl_transform:
@@ -55,13 +55,15 @@ class NodeEncoder(torch.nn.Module):
                 else:
                     return cat((k_wl_embedding, zeros_like(k_wl_embedding)), dim=1)
             else:
-                return x_embedding + k_wl_embedding
+                if k_wl_embedding is not None:
+                    x_embedding += k_wl_embedding
+                return x_embedding
         except Exception as e:
             print('feature dims', self.feature_dims)
             print('len feature dims', len(self.feature_dims))
-            print('i',i)
+            print('i', i)
             print('x shape', x.shape)
-            print('k',k_wl)
+            print('k', k_wl)
             print(x[:, i])
             raise e
 

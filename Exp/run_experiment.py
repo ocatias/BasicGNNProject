@@ -390,7 +390,7 @@ def main(passed_args=None):
         nr_prev_errors = store_error(e, errors_path, "run_exp", {"args": str(args)})
 
         print("An error has been thrown in the run_experiment main method. Exiting.")
-        raise Exception
+        raise e
 
 
 if __name__ == "__main__":
