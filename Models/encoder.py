@@ -57,7 +57,7 @@ class NodeEncoder(torch.nn.Module):
             print('feature dims', self.feature_dims)
             print(i)
             print(x[:, i])
-            raise e
+            exit()
 
 
 
