@@ -146,8 +146,6 @@ class TransforToKWl(BaseTransform):
         self.range_k = list(range(k))
         self.matrices = {}
         self.uses_turbo = turbo
-        if self.uses_turbo and self.compute_attributes:
-            raise ValueError('k-wl turbo and compute attributes is not compatible')
         if self.uses_turbo and self.modify:
             raise ValueError('k-wl turbo and modify (not using sequantial) is not compatible')
         self.average_num_of_vertices = 0
@@ -303,9 +301,9 @@ class TransforToKWl(BaseTransform):
                 if isinstance(graph.x, list):
                     graph.x = tensor(graph.x)
                 graph.x = pad(graph.x, pad=(0, 1), value=1)
-            graph.iso_type_1 = tensor([1] * graph.num_nodes)
-            graph.edge_index_1 = graph.edge_index
-            graph.edge_attr_1 = graph.edge_attr
+            graph['iso_type_1'] = tensor([1] * graph.num_nodes)
+            graph['edge_index_1'] = graph.edge_index
+            graph['edge_attr_1'] = graph.edge_attr
             return graph, [(x,) for x in return_mapping]
         vert_num = graph.num_nodes
         num_edges = graph.edge_index.shape[1]
@@ -342,7 +340,10 @@ class TransforToKWl(BaseTransform):
                 c2 = all_combinations[new_edges[1][i]]
                 if self.set_based:
                     e = set(c1) ^ set(c2)
-                    new_edge_attr[i] = cat((tensor([new_edge_attr[i]]), tensor(old_adj[e.pop()][e.pop()])))
+                    if self.compute_attributes:
+                        new_edge_attr[i] = tensor(old_adj[e.pop()][e.pop()])
+                    else:
+                        new_edge_attr[i] = tensor([new_edge_attr[i]])
                 else:
                     # edge attributes are hard. This will include median of all the edges that
                     # were between any of the vertexes from the two subgraphs. It can be remade to just include the stack.
@@ -379,8 +380,6 @@ class TransforToKWl(BaseTransform):
                 new_x[i] = cat(
                     (tensor(k_x), self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c], False),),
                     0)
-            # elif len_vert_attr == 1:
-            #     new_x[i] = cat((tensor(k_x), mode(stack([graph.x[j] for j in c])).values.reshape(1)))
             else:
                 new_x[i] = tensor(k_x).long()
 
@@ -421,10 +420,10 @@ class TransforToKWl(BaseTransform):
             print(f'transform to k-WL -- done {self.processed_num}')
         num_nodes = data.num_nodes
         self.vertices_num[num_nodes] += 1
-        if num_nodes <= self.k or data.edge_index.shape[1] == 0:
-            return self.add_dimensions_to_graph_without_modifying(data)
         if self.uses_turbo:
             return self.k_wl_turbo(data)
+        if num_nodes <= self.k or data.edge_index.shape[1] == 0:
+            return self.add_dimensions_to_graph_without_modifying(data)
         else:
             return self.graph_to_k_wl_graph(data)
 
@@ -444,7 +443,7 @@ class TransforToKWl(BaseTransform):
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}(k={self.k})(tur={self.uses_turbo})'
                 f'(fp={self.agg_function_features_name})'
-                f'(set={self.set_based})(con={self.connected})')
+                f'(set={self.set_based})(con={self.connected})(att={self.compute_attributes})')
 
     # def __del__(self):
     #     print('number of vertices in graphs', self.vertices_num)
@@ -503,18 +502,26 @@ class TransforToKWl(BaseTransform):
         new_graph.num_nodes = sum([g[f'iso_type_{self.k}'].shape[0] for g, _ in processed_subgraphs]) \
                               + graph.num_nodes - sum(vertices_in_components.values())
         new_graph['x'] = []
-        # new_graph['edge_attr'] = []
+        new_graph['edge_attr'] = []
         new_graph['edge_index'] = ([], [])
         assignment_index = [[-1] * len(old_vertex_not_in_subgraphs),
                             [-1] * len(old_vertex_not_in_subgraphs)]
 
         # add simple elements of graph first
         for i, v in enumerate(old_vertex_not_in_subgraphs):
-            # if self.compute_attributes and graph.x is not None:
-            #     # add padding to x and edge attr because the subgraphs added later have one dimension more
-            #     new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
-            # else:
-            new_graph.x.append(tensor((0)))
+            if self.compute_attributes and graph.x is not None:
+                # add padding to x and edge attr because the subgraphs added later have one dimension more,
+                # or if the compute_attributes is 'cat', the subgraphs have one dimension for isomorphism
+                # class at the beginning and k times the attributes.
+                if self.agg_function_features_name == 'cat':
+                    att = pad(graph.x[v], pad=(1, 0), value=0)
+                    for i in range(self.k - 1):
+                        att = cat((att, graph.x[v]))
+                    new_graph.x.append(att)
+                else:
+                    new_graph.x.append(pad(graph.x[v], pad=(1, 0), value=0))
+            else:
+                new_graph.x.append(tensor((0)))
             assignment_index[0][i] = v
             assignment_index[1][i] = i
         for _, m in processed_subgraphs:
@@ -542,8 +549,8 @@ class TransforToKWl(BaseTransform):
             # adding vertexes and intra subgraph edges
             starting_id = len(new_graph.x)
             new_graph.x.extend(list(subgraph[f'iso_type_{self.k}']))
-            # if self.compute_attributes:
-            #     new_graph.edge_attr.extend(list(subgraph[f'edge_attr_{self.k}']))
+            if self.compute_attributes:
+                new_graph.edge_attr.extend(list(subgraph[f'edge_attr_{self.k}']))
             for i, j in zip(*subgraph[f'edge_index_{self.k}']):
                 new_graph.edge_index[0].append(i + starting_id)
                 new_graph.edge_index[1].append(j + starting_id)
@@ -611,8 +618,6 @@ class TransforToKWl(BaseTransform):
             already_processed_old_vertices.extend(groups[sub_i])
         new_graph['x'] = stack([tensor(i) for i in new_graph.x])
         #
-        # if self.compute_attributes:
-        #     new_graph.edge_attr = stack(new_graph.edge_attr)
         new_graph.edge_index = tensor(new_graph.edge_index)
         if len(new_graph.x.shape) == 1:
             new_graph['x'] = torch.unsqueeze(new_graph.x, 1)
@@ -627,17 +632,17 @@ class TransforToKWl(BaseTransform):
             print(groups)
             print(new_graph[f"assignment_index_{self.k}"])
             raise ValueError(f'values dont match {new_graph.x.shape, max(new_graph[f"assignment_index_{self.k}"][1])}')
+        if self.compute_attributes and len(new_graph.edge_attr) > 0:
+            new_graph.edge_attr = stack(new_graph.edge_attr)
+        else:
+            new_graph.edge_attr = zeros((new_graph.edge_index.shape[1], graph.edge_attr.shape[1]))
         if self.modify:
-            new_graph.edge_attr = zeros((new_graph.edge_index.shape[1], 1))
             return new_graph
         else:
             graph[f'iso_type_{self.k}'] = new_graph.x
             graph[f'assignment_index_{self.k}'] = new_graph[f'assignment_index_{self.k}']
 
-            # if self.compute_attributes:
-            #     graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
-            # else:
-            graph[f'edge_attr_{self.k}'] = zeros((new_graph.edge_index.shape[1], 1))
+            graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
             graph[f'edge_index_{self.k}'] = new_graph.edge_index
             # if self.k == 1:
             #     graph['edge_index_2'] = graph.edge_index_1
@@ -654,8 +659,10 @@ class TransforToKWl(BaseTransform):
         else:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
         if not self.modify:
-            data[f"edge_attr_{self.k}"] = zeros((data.edge_index.shape[1], 1), dtype=int8)
-        if self.compute_attributes:
+            data[f"edge_attr_{self.k}"] = zeros((data.edge_index.shape[1], data.edge_attr.shape[1]), dtype=int8)
+        if self.compute_attributes and data.x is not None:
+            if self.agg_function_features_name == 'cat':
+                data.x = cat([data.x] * self.k, dim=1)
             data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x, pad=(1, 0, 0, 0), value=0)
         else:
             data['x' if self.modify else f"iso_type_{self.k}"] = zeros((data.num_nodes, 1))

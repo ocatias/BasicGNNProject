@@ -115,6 +115,8 @@ def parse_args(passed_args=None):
                         help="Whether to use connected version of k-wl on the last k")
     parser.add_argument('--cross_validation', type=int, default=1,
                         help="Whether to use cross validation")
+    parser.add_argument('--k_wl_compute_attributes', type=int, default=0,
+                        help="Whether to compute attributes while computing k-wl")
 
     # Load partial args instead of command line args (if they are given)
     if passed_args is None:

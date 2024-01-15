@@ -55,7 +55,7 @@ def get_transform(args, split=None):
                                             agg_function_features=args.k_wl_pool_function,
                                             set_based=bool(args.k_wl_set_based),
                                             modify=not bool(args.sequential_k_wl),
-                                            compute_attributes=False))
+                                            compute_attributes=bool(args.k_wl_compute_attributes)))
         transforms.append(TransforToKWl(k=args.transform_k_wl,
                                         turbo=args.k_wl_turbo,
                                         max_group_size=args.k_wl_turbo_max_group_size,
@@ -63,7 +63,7 @@ def get_transform(args, split=None):
                                         set_based=bool(args.k_wl_set_based),
                                         modify=not bool(args.sequential_k_wl),
                                         connected=args.connected_k_wl_last_k,
-                                        compute_attributes=not bool(args.sequential_k_wl)))
+                                        compute_attributes=bool(args.k_wl_compute_attributes)))
 
     # Pad features if necessary (needs to be done after adding additional features from other transformation)
     if args.add_num_triangles:
