@@ -45,7 +45,7 @@ class NodeEncoder(torch.nn.Module):
                         # the first position is not repeating
                         x_embedding += self.atom_embedding_list[(i - 1) % self.len_embedding_list](x[:, i])
                     else:
-                        x_embedding += self.atom_embedding_list[i](x[:, i])
+                        x_embedding += self.atom_embedding_list[i - 1 if k_wl > 0 else i](x[:, i])
             if self.k_wl_separate:
                 if not isinstance(x_embedding, int):
                     return cat((k_wl_embedding, x_embedding), dim=1)
@@ -58,7 +58,6 @@ class NodeEncoder(torch.nn.Module):
             print(i)
             print(x[:, i])
             exit()
-
 
 
 class EdgeEncoder(torch.nn.Module):
