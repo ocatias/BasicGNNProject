@@ -7,19 +7,24 @@ from Models.utils import device
 
 class NodeEncoder(torch.nn.Module):
 
-    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=False, k_wl_separate=False):
+    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=0, k_wl_separate=False):
         super(NodeEncoder, self).__init__()
         self.atom_embedding_list = torch.nn.ModuleList()
-        if uses_k_wl_transform and k_wl_separate:
+        if uses_k_wl_transform > 0 and k_wl_separate:
             emb_dim_local = emb_dim // 2
             self.k_wl_separate = True
         else:
             self.k_wl_separate = False
             emb_dim_local = emb_dim
         if feature_dims is None:
-            feature_dims = [100] + get_atom_feature_dims()  # first one is node degree
-        if uses_k_wl_transform:
-            feature_dims.insert(1, 100)  # first one is node degree or empty
+            feature_dims = get_atom_feature_dims()
+        if uses_k_wl_transform > 0:
+            self.uses_k_wl_transform = bool(uses_k_wl_transform)
+            self.k_wl_embeddings = []
+            for i in range(uses_k_wl_transform + 1):
+                emb = torch.nn.Embedding(10, emb_dim_local)
+                torch.nn.init.xavier_uniform_(emb.weight.data)
+                self.k_wl_embeddings.append(emb)
         print('node embedding feature dims', feature_dims)
         for i, dim in enumerate(feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim_local)
@@ -27,16 +32,16 @@ class NodeEncoder(torch.nn.Module):
             self.atom_embedding_list.append(emb)
         self.len_embedding_list = len(self.atom_embedding_list)
 
-    def forward(self, x):
+    def forward(self, x, k_wl=0):
         x_embedding = 0
         x = x.long()
         for i in range(x.shape[1]):
-            if i == 0 and self.k_wl_separate:
-                k_wl_embedding = self.atom_embedding_list[i](x[:, i])
+            if k_wl > 0 and i == 0 and self.uses_k_wl_transform:
+                k_wl_embedding = self.k_wl_embeddings[k_wl](x[:, i])
             else:
                 if i >= self.len_embedding_list:
-                    # the first two positions are not repeating
-                    x_embedding += self.atom_embedding_list[(i - 2) % (self.len_embedding_list - 2) + 2](x[:, i])
+                    # the first position is not repeating
+                    x_embedding += self.atom_embedding_list[(i - 1) % self.len_embedding_list](x[:, i])
                 else:
                     x_embedding += self.atom_embedding_list[i](x[:, i])
         if self.k_wl_separate:

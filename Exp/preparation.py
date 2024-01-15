@@ -71,8 +71,10 @@ def get_transform(args, split=None):
     if args.add_node_degree:
         transforms.append(AddNodeDegree())
     else:
-        transforms.append(AddZeroNodeAttr(1))
-    transforms.append(AddZeroEdgeAttr(1))
+        # only adds zero attribute if there are none
+        transforms.append(AddZeroNodeAttr(0))
+    # only adds zero attribute if there are none
+    transforms.append(AddZeroEdgeAttr(0))
 
     return Compose(transforms)
 

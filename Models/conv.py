@@ -114,7 +114,7 @@ class GNN_node(torch.nn.Module):
     """
 
     def __init__(self, num_layer, emb_dim, drop_ratio=0.5, JK="last", residual=False, gnn_type='gin',
-                 node_encoder=lambda x: x, edge_encoder=lambda x: x, k_wl=0, sequential_k_wl=False):
+                 node_encoder=lambda x, _: x, edge_encoder=lambda x: x, k_wl=0, sequential_k_wl=False):
         '''
             emb_dim (int): node embedding dimensionality
             num_layer (int): number of GNN message passing layers
@@ -140,11 +140,6 @@ class GNN_node(torch.nn.Module):
         self.batch_norms = torch.nn.ModuleList()
         self.gnn_type = gnn_type
         self.edge_encoder = edge_encoder
-        if self.sequential_k_wl:
-            self.k_wl_embeddings = [NodeEncoder(emb_dim, feature_dims=[10] * 10) for k in range(1 if self.k_wl == 1 else 2, self.k_wl + 1)]
-            for e in self.k_wl_embeddings:
-                e.to(device())
-            #
         for layer in range(num_layer):
             if self.sequential_k_wl and layer in k_wl_sequential_layers(num_layer, self.k_wl):
                 addition_input_dim = emb_dim
@@ -166,7 +161,8 @@ class GNN_node(torch.nn.Module):
         k_wl_layers = []
         if self.sequential_k_wl:
             seq_x = [batched_data[f'iso_type_{i}'].int() for i in range(1 if self.k_wl == 1 else 2, self.k_wl + 1)]
-            seq_x = [self.k_wl_embeddings[i](x_).squeeze() for i, x_ in enumerate(seq_x)]
+            # node encoder with second param 0 means no k-wl
+            seq_x = [self.node_encoder(x_, i + 1) for i, x_ in enumerate(seq_x)]
             seq_edge_index = [batched_data[f'edge_index_{i}'].long() for i in
                               range(1 if self.k_wl == 1 else 2, self.k_wl + 1)]
             seq_edge_attr = [batched_data[f'edge_attr_{i}'].int() for i in
@@ -191,7 +187,7 @@ class GNN_node(torch.nn.Module):
         if self.gnn_type == "gin":
             x = x.long()
         edge_attr = edge_attr.long()
-        h_list = [self.node_encoder(x)]
+        h_list = [self.node_encoder(x, 0)]
         current_k_wl = 0
         h = h_list[0]
         for layer in range(self.num_layer):

@@ -13,11 +13,12 @@ class AddZeroEdgeAttr(BaseTransform):
     """
 
     def __init__(self, edge_attr_size: int = True):
-        assert edge_attr_size > 0
         self.edge_attr_size = edge_attr_size
 
     def __call__(self, data: Data) -> Data:
         if 'edge_attr' in data:
+            if self.edge_attr_size == 0 and data.edge_attr.shape[1] > 0:
+                return data
             data['edge_attr'] = cat([torch.zeros((data.edge_index.shape[1], self.edge_attr_size)), data.edge_attr],
                                     dim=1).long()
         else:
@@ -50,11 +51,13 @@ class AddZeroNodeAttr(BaseTransform):
     """
 
     def __init__(self, node_attr_size: int = True):
-        assert node_attr_size > 0
         self.node_attr_size = node_attr_size
 
     def __call__(self, data: Data) -> Data:
         if 'x' in data.keys:
+            # only add attribute ib there are none
+            if self.node_attr_size == 0 and data.x.shape[1] > 0:
+                return data
             data['x'] = cat([torch.zeros((data.num_nodes, self.node_attr_size)), data.x], dim=1).long()
         else:
             data['x'] = torch.zeros((data.num_nodes, self.node_attr_size))
