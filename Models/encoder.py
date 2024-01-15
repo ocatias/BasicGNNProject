@@ -55,7 +55,9 @@ class NodeEncoder(torch.nn.Module):
                 return x_embedding
         except Exception as e:
             print('feature dims', self.feature_dims)
+            print('len feature dims', len(self.feature_dims))
             print('i',i)
+            print('x shape', x.shape)
             print('k',k_wl)
             print(x[:, i])
             exit()
