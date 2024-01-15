@@ -100,7 +100,7 @@ def parse_args(passed_args):
                         help="Number of times to repeat the final model training")
     parser.add_argument('--folds', type=int, default="1",
                         help='Number of folds, setting this to something other than 1, means we will treat this as cross validation')
-    parser.add_argument('--device', type=int, default=-1,
+    parser.add_argument('--device', type=str, default="-1",
                         help='Overwrites the setting for device from grid')
     parser.add_argument('--transform_k_wl', type=int, default=-1,
                         help='Overwrites the setting for transform_k_wl from grid')
@@ -355,14 +355,19 @@ def find_eval_params(args, grid, split):
     # run_final_evaluation(args, final_eval_path, best_params)
     # return mode
 
+def safe_int(i):
+    try:
+        return int(i)
+    except:
+        return i
 
 def main(passed_args=None):
     args = parse_args(passed_args)
 
     with open(args.grid_file, 'r') as file:
         grid_raw = yaml.safe_load(file)
-    if args.device != -1:
-        grid_raw['device'] = [args.device]
+    if args.device != "-1":
+        grid_raw['device'] = [safe_int(args.device)]
     if args.transform_k_wl != -1:
         grid_raw['transform_k_wl'] = [args.transform_k_wl]
 
