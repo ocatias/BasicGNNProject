@@ -60,7 +60,7 @@ class NodeEncoder(torch.nn.Module):
             print('x shape', x.shape)
             print('k',k_wl)
             print(x[:, i])
-            exit()
+            raise e
 
 
 class EdgeEncoder(torch.nn.Module):
