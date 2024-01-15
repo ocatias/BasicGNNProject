@@ -18,6 +18,7 @@ class NodeEncoder(torch.nn.Module):
             emb_dim_local = emb_dim
         if feature_dims is None:
             feature_dims = get_atom_feature_dims()
+        self.feature_dims = feature_dims
         if uses_k_wl_transform > 0:
             self.uses_k_wl_transform = bool(uses_k_wl_transform)
             self.k_wl_embeddings = []
@@ -35,22 +36,28 @@ class NodeEncoder(torch.nn.Module):
     def forward(self, x, k_wl=0):
         x_embedding = 0
         x = x.long()
-        for i in range(x.shape[1]):
-            if k_wl > 0 and i == 0 and self.uses_k_wl_transform:
-                k_wl_embedding = self.k_wl_embeddings[k_wl](x[:, i])
-            else:
-                if i >= self.len_embedding_list:
-                    # the first position is not repeating
-                    x_embedding += self.atom_embedding_list[(i - 1) % self.len_embedding_list](x[:, i])
+        try:
+            for i in range(x.shape[1]):
+                if k_wl > 0 and i == 0 and self.uses_k_wl_transform:
+                    k_wl_embedding = self.k_wl_embeddings[k_wl](x[:, i])
                 else:
-                    x_embedding += self.atom_embedding_list[i](x[:, i])
-        if self.k_wl_separate:
-            if not isinstance(x_embedding, int):
-                return cat((k_wl_embedding, x_embedding), dim=1)
+                    if i >= self.len_embedding_list:
+                        # the first position is not repeating
+                        x_embedding += self.atom_embedding_list[(i - 1) % self.len_embedding_list](x[:, i])
+                    else:
+                        x_embedding += self.atom_embedding_list[i](x[:, i])
+            if self.k_wl_separate:
+                if not isinstance(x_embedding, int):
+                    return cat((k_wl_embedding, x_embedding), dim=1)
+                else:
+                    return cat((k_wl_embedding, zeros_like(k_wl_embedding)), dim=1)
             else:
-                return cat((k_wl_embedding, zeros_like(k_wl_embedding)), dim=1)
-        else:
-            return x_embedding
+                return x_embedding
+        except Exception as e:
+            print('feature dims', self.feature_dims)
+            print(i)
+            print(x[:, i])
+
 
 
 class EdgeEncoder(torch.nn.Module):
