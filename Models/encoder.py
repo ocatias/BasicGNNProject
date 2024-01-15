@@ -25,11 +25,13 @@ class NodeEncoder(torch.nn.Module):
             for i in range(uses_k_wl_transform + 1):
                 emb = torch.nn.Embedding(10, emb_dim_local)
                 torch.nn.init.xavier_uniform_(emb.weight.data)
+                emb.to(device())
                 self.k_wl_embeddings.append(emb)
         print('node embedding feature dims', feature_dims)
         for i, dim in enumerate(feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim_local)
             torch.nn.init.xavier_uniform_(emb.weight.data)
+            emb.to(device())
             self.atom_embedding_list.append(emb)
         self.len_embedding_list = len(self.atom_embedding_list)
 
