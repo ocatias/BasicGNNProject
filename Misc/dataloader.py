@@ -3,7 +3,7 @@ from torch_geometric.data import Batch
 
 
 def collate(data_list):
-    keys = data_list[0].keys
+    keys = data_list[0].keys()
     assert 'batch' not in keys
 
     batch = Batch()
@@ -70,7 +70,7 @@ def collate(data_list):
         cumsum_2 += N_2
         cumsum_3 += N_3
 
-    keys = [x for x in batch.keys if x not in ['batch', 'batch_1', 'batch_2', 'batch_3']]
+    keys = [x for x in batch.keys() if x not in ['batch', 'batch_1', 'batch_2', 'batch_3']]
     for key in keys:
         if torch.is_tensor(batch[key][0]):
             batch[key] = torch.cat(

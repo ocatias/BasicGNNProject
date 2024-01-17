@@ -102,7 +102,7 @@ def parse_args(passed_args=None):
     parser.add_argument('--k_wl_separate_embedding', type=int, default=0,
                         help="Whether to use separate embedding dimensions for k-wl "
                              "computed data or add them to feature embeddings.")
-    parser.add_argument('--k_wl_set_based', type=int, default=0,
+    parser.add_argument('--k_wl_set_based', type=int, default=1,
                         help="Whether to use set based k-wl or tuple based. Set based requires "
                              "several magnitudes less computation power")
     parser.add_argument('--sequential_k_wl', type=int, default=0,

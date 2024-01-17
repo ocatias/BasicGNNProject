@@ -13,7 +13,7 @@ import networkx as nx
 import torch
 import torch_geometric
 from matplotlib import pyplot as plt
-from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32, int8
+from torch import transpose, stack, mode, tensor, cat, zeros, empty, int32, int8, unique
 from torch.nn.functional import pad
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
@@ -153,7 +153,7 @@ class TransforToKWl(BaseTransform):
         self.vertices_num = defaultdict(int)
         self.vertices_reduction = defaultdict(lambda: defaultdict(int))
         self.k_wl_vertices_num = defaultdict(int)
-        self.stats_isomorphism_indexes = []
+        self.stats_isomorphism_indexes = defaultdict(int)
         self.stats_triangle_counts = []
         self.processed_num = 0
         self.agg_function_features_name = agg_function_features
@@ -362,7 +362,6 @@ class TransforToKWl(BaseTransform):
 
         else:
             new_edge_attr = [tensor([i]) for i in new_edge_attr]
-        self.stats_isomorphism_indexes.append(defaultdict(int))
         for i, c in enumerate(all_combinations):
             if self.set_based:
                 # Set version
@@ -374,7 +373,7 @@ class TransforToKWl(BaseTransform):
             else:
                 # Tuple version. Keeping in mind the order of vertices. Each binary place represents one edge
                 k_x = [sum([int(bool(old_adj[c[j - 1]][c[j]])) * 2 ** j for j in range(len(c))]) + 1]
-            self.stats_isomorphism_indexes[-1][k_x[0]] += 1
+            self.stats_isomorphism_indexes[k_x[0]] += 1
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if self.compute_attributes and len_vert_attr > 0:
                 new_x[i] = cat(
@@ -632,10 +631,10 @@ class TransforToKWl(BaseTransform):
             print(groups)
             print(new_graph[f"assignment_index_{self.k}"])
             raise ValueError(f'values dont match {new_graph.x.shape, max(new_graph[f"assignment_index_{self.k}"][1])}')
-        if self.compute_attributes and len(new_graph.edge_attr) > 0:
+        if self.compute_attributes and new_graph.edge_attr is not None and new_graph.edge_attr.shape[1] > 0:
             new_graph.edge_attr = stack(new_graph.edge_attr)
         else:
-            new_graph.edge_attr = zeros((new_graph.edge_index.shape[1], graph.edge_attr.shape[1]))
+            new_graph.edge_attr = empty((new_graph.edge_index.shape[1], 0))
         if self.modify:
             return new_graph
         else:
@@ -683,7 +682,7 @@ class TransforToKWl(BaseTransform):
 if __name__ == '__main__':
     with open('../debug/graph_20_02.pkl', 'rb') as file:
         data = pickle.load(file)
-    transform = TransforToKWl(1, set_based=True, turbo=True, modify=False, compute_attributes=False)
+    transform = TransforToKWl(3, set_based=True, turbo=False, modify=False, compute_attributes=False)
 
     from sknetwork.data import house
 
@@ -693,7 +692,10 @@ if __name__ == '__main__':
     transformed_data = transform(data)
     print(transformed_data)
     print(transformed_data.x)
-    print(transformed_data.iso_type_1)
+    # print('unique iso type', unique(transformed_data.iso_type_3[:, 0]))
+    print(transformed_data.iso_type_3)
+    print(transformed_data.edge_attr)
+    print(transformed_data.edge_attr_3)
     # print(transformed_data.edge_attr)
     # pprint(list(zip(mapping, transformed_data.x)))
     visualize(transformed_data, 'transformed_turbo')

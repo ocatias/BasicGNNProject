@@ -13,7 +13,7 @@ class AddNodeDegree(BaseTransform):
         l = [[0] for _ in range(data.num_nodes)]
         for i in data.edge_index[0]:
             l[i][0] += 1
-        if 'x' in data.keys:
+        if data.x is not None:
             data['x'] = cat([ tensor(l), data.x], dim=1).long()
         else:
             data['x'] = tensor(l).long()
