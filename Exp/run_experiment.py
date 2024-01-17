@@ -338,6 +338,7 @@ def find_eval_params(args, grid, split):
         except Exception as e:
             nr_prev_errors = store_error(e, errors_path, "hyperparam_search", {"params": param_dict})
             print(e.__str__())
+            raise e
             if nr_prev_errors > allowed_nr_errors:
                 raise Exception("Too many training runs crashed.")
 
