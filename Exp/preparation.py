@@ -127,7 +127,7 @@ def load_dataset(args, config, cross_val_i):
         print('dir', dir)
         dataset = TUDataset(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
                             pre_filter=filter, use_node_attr=True, use_edge_attr=True)
-
+        print('len dataset', len(dataset))
         perm = torch.randperm(len(dataset), dtype=torch.long)
         dataset = dataset[perm]
         test_mask = torch.zeros(len(dataset), dtype=torch.bool)
@@ -142,18 +142,6 @@ def load_dataset(args, config, cross_val_i):
         val_dataset = train_dataset[val_mask]
         train_dataset = train_dataset[~val_mask]
         datasets = [train_dataset, val_dataset, test_dataset]
-        # split_idx = {'train': [], 'valid': [], 'test': []}
-        # random.seed(42)
-        # for i in range(len(dataset)):
-        #     x = dataset.get(i)
-        #     if random.random() < 0.5:
-        #         split_idx['train'].append(i)
-        #     elif random.random() < 0.5:
-        #         split_idx['valid'].append(i)
-        #     else:
-        #         split_idx['test'].append(i)
-
-        # datasets = [dataset[split_idx["train"]], dataset[split_idx["valid"]], dataset[split_idx["test"]]]
     else:
         raise NotImplementedError("Unknown dataset")
     if args.sequential_k_wl and int(args.transform_k_wl) + int(args.k_wl_turbo) > 1:
