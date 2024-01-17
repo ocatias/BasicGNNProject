@@ -127,17 +127,13 @@ def load_dataset(args, config, cross_val_i):
         print('dir', dir)
         dataset = TUDataset(root=escape(dir.replace('\\', '/')), name=args.dataset, pre_transform=transform,
                             pre_filter=filter, use_node_attr=True, use_edge_attr=True)
-        print('len dataset', len(dataset))
         perm = torch.randperm(len(dataset), dtype=torch.long)
         dataset = dataset[perm]
         test_mask = torch.zeros(len(dataset), dtype=torch.bool)
-        n = len(dataset) // args.cross_validation
+        n = len(dataset) // max(args.cross_validation, 2)
         test_mask[cross_val_i * n:(cross_val_i + 1) * n] = 1
         test_dataset = dataset[test_mask]
-        print('test mask', test_mask)
         train_dataset = dataset[~test_mask]
-        print('len test dataset',len(test_dataset))
-        print('len train dataset',len(train_dataset))
         n = len(train_dataset) // args.cross_validation
         val_mask = torch.zeros(len(train_dataset), dtype=torch.bool)
         val_mask[cross_val_i * n:(cross_val_i + 1) * n] = 1
@@ -151,7 +147,6 @@ def load_dataset(args, config, cross_val_i):
         val_loader = DataLoaderCustom(datasets[1], batch_size=args.batch_size, shuffle=False)
         test_loader = DataLoaderCustom(datasets[2], batch_size=args.batch_size, shuffle=False)
     else:
-        print('datasets[0] len', len(datasets[0]))
         train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
         val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
         test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
