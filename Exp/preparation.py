@@ -134,8 +134,10 @@ def load_dataset(args, config, cross_val_i):
         n = len(dataset) // args.cross_validation
         test_mask[cross_val_i * n:(cross_val_i + 1) * n] = 1
         test_dataset = dataset[test_mask]
+        print('test mask', test_mask)
         train_dataset = dataset[~test_mask]
-
+        print('len test dataset',len(test_dataset))
+        print('len train dataset',len(train_dataset))
         n = len(train_dataset) // args.cross_validation
         val_mask = torch.zeros(len(train_dataset), dtype=torch.bool)
         val_mask[cross_val_i * n:(cross_val_i + 1) * n] = 1
