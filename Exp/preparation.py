@@ -149,6 +149,7 @@ def load_dataset(args, config, cross_val_i):
         val_loader = DataLoaderCustom(datasets[1], batch_size=args.batch_size, shuffle=False)
         test_loader = DataLoaderCustom(datasets[2], batch_size=args.batch_size, shuffle=False)
     else:
+        print('datasets[0] len', len(datasets[0]))
         train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
         val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
         test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
