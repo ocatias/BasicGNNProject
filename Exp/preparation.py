@@ -4,7 +4,7 @@ import random
 from glob import escape
 
 import torch
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, TUDataset
 import torch.optim as optim
 from torch_geometric.utils import to_undirected
