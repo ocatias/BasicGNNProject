@@ -334,11 +334,18 @@ def find_eval_params(args, grid, split):
 
             # Evaluate.
             evaluate_params(param_dict, hyperparams_path)
-
         except Exception as e:
             nr_prev_errors = store_error(e, errors_path, "hyperparam_search", {"params": param_dict})
             print(e.__str__())
-            raise e
+
+            if "out of memory" in str(e):
+                gc.collect()
+                torch.cuda.empty_cache()
+                print('out of memory error')
+                continue
+            else:
+                raise e
+
             if nr_prev_errors > allowed_nr_errors:
                 raise Exception("Too many training runs crashed.")
 
