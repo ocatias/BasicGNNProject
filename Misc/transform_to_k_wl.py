@@ -615,7 +615,7 @@ class TransforToKWl(BaseTransform):
             #                         new_graph.edge_index[0].append(i_v)
             #                         new_graph.edge_index[1].append(j_v)
             already_processed_old_vertices.extend(groups[sub_i])
-        new_graph['x'] = stack([tensor(i) for i in new_graph.x])
+        new_graph['x'] = stack(new_graph.x)
         #
         new_graph.edge_index = tensor(new_graph.edge_index)
         if len(new_graph.x.shape) == 1:
