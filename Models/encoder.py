@@ -39,6 +39,7 @@ class NodeEncoder(torch.nn.Module):
         x_embedding = 0
         x = x.long()
         k_wl_embedding = None
+        i = 0
         try:
             for i in range(x.shape[1]):
                 if k_wl > 0 and i == 0 and self.uses_k_wl_transform:
