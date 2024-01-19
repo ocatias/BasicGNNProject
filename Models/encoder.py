@@ -92,7 +92,7 @@ class EdgeEncoder(torch.nn.Module):
         self.len_embedding_list = len(self.bond_embedding_list)
 
     def forward(self, edge_attr):
-        bond_embedding = 0
+        bond_embedding = zeros((edge_attr.shape[0], self.emb_dim_local), dtype=torch.float, device=device())
         for i in range(edge_attr.shape[1]):
             if i == 0 and self.k_wl_separate:
                 k_wl_embedding = self.bond_embedding_list[i](edge_attr[:, i])
@@ -103,10 +103,6 @@ class EdgeEncoder(torch.nn.Module):
                         edge_attr[:, i])
                 else:
                     bond_embedding += self.bond_embedding_list[i](edge_attr[:, i])
-        # in case the
-        if type(bond_embedding) == int:
-            bond_embedding = zeros((edge_attr.shape[0], self.emb_dim_local), dtype=torch.float)
-            bond_embedding.to(device())
         if self.k_wl_separate:
             if not isinstance(bond_embedding, int):
                 return cat((k_wl_embedding, bond_embedding), dim=1)
