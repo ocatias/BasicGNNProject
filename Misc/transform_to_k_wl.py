@@ -384,6 +384,12 @@ class TransforToKWl(BaseTransform):
                 new_x[i] = tensor(k_x).long()
 
         graph['iso_type' + ("" if local_modify else f"_{self.k}")] = stack(new_x).squeeze(dim=1)
+
+        if 'x' in graph and len(graph.x.shape) == 1:
+            graph['x'] = torch.unsqueeze(graph.x, 1)
+        if len(graph['iso_type' + ("" if local_modify else f"_{self.k}")].shape) == 1:
+            graph['iso_type' + ("" if local_modify else f"_{self.k}")] = torch.unsqueeze(
+                graph['iso_type' + ("" if local_modify else f"_{self.k}")], 1)
         if local_modify:
             graph.num_nodes = len(all_combinations)
 
@@ -598,7 +604,7 @@ class TransforToKWl(BaseTransform):
 
             graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
             graph[f'edge_index_{self.k}'] = new_graph.edge_index
-            if torch.max(graph[f'iso_type_{self.k}'][:,0]) > 1:
+            if torch.max(graph[f'iso_type_{self.k}'][:, 0]) > 1:
                 print(graph)
                 print(graph[f'iso_type_{self.k}'])
             if graph[f'edge_index_{self.k}'][0][-1] == 0:
