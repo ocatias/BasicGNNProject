@@ -548,7 +548,7 @@ class TransforToKWl(BaseTransform):
             # adding vertexes and intra subgraph edges
             starting_id = len(new_graph.x)
             new_graph.x.extend(list(subgraph[f'iso_type_{self.k}']))
-            if self.compute_attributes:
+            if self.compute_attributes and f'edge_attr_{self.k}' in subgraph:
                 new_graph.edge_attr.extend(list(subgraph[f'edge_attr_{self.k}']))
             for i, j in zip(*subgraph[f'edge_index_{self.k}']):
                 new_graph.edge_index[0].append(i + starting_id)
