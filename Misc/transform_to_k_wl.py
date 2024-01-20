@@ -572,11 +572,12 @@ class TransforToKWl(BaseTransform):
             print(new_graph.edge_index)
             print(cum_i_edge)
             print(new_graph.edge_index.shape)
+            raise ValueError('cum_i_edge must be the same as edge index length')
         if cum_i_node != new_graph.x.shape[0]:
             print(new_graph.x)
             print(cum_i_node)
             print(new_graph.x.shape)
-            raise ValueError('mismatch between x num and x num')
+            raise ValueError('cum_i_node must be the same as x index length')
         if len(new_graph.x.shape) == 1:
             new_graph['x'] = torch.unsqueeze(new_graph.x, 1)
         if not new_graph.x.shape[0] == max(new_graph[f'assignment_index_{self.k}'][1]) + 1:
@@ -604,12 +605,6 @@ class TransforToKWl(BaseTransform):
 
             graph[f'edge_attr_{self.k}'] = new_graph.edge_attr
             graph[f'edge_index_{self.k}'] = new_graph.edge_index
-            if torch.max(graph[f'iso_type_{self.k}'][:, 0]) > 1:
-                print(graph)
-                print(graph[f'iso_type_{self.k}'])
-            if graph[f'edge_index_{self.k}'][0][-1] == 0:
-                print(graph)
-                print(graph[f'edge_index_{self.k}'])
             return graph
 
     def add_dimensions_to_graph_without_modifying(self, data):
