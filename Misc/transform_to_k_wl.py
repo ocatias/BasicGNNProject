@@ -558,7 +558,7 @@ class TransforToKWl(BaseTransform):
                 subgraph[f'iso_type_{self.k}'] = torch.unsqueeze(subgraph[f'iso_type_{self.k}'], 1)
             new_graph.x[cum_i_node:cum_i_node + subgraph[f'iso_type_{self.k}'].shape[0]] = subgraph[
                 f'iso_type_{self.k}']
-            if self.compute_attributes and f'edge_attr_{self.k}' in subgraph:
+            if self.compute_attributes and f'edge_attr_{self.k}' in subgraph and 'edge_attr' in graph:
                 new_graph.edge_attr[cum_i_edge:cum_i_edge + subgraph[f'edge_attr_{self.k}'].shape[0]] = subgraph[
                     f'edge_attr_{self.k}']
             subgraph[f'edge_index_{self.k}'] += cum_i_node
