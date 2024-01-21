@@ -173,6 +173,8 @@ def run(passed_args=None):
     args = parse_args(passed_args)
     if args.transform_k_wl == 1 and args.k_wl_turbo == 0:
         return {}
+    if args.transform_k_wl == 0 and args.k_wl_turbo == 1:
+        return {}
     if args.cross_validation > 0:
         cross_validation = range(args.cross_validation)
         cross_val_id = uuid4()
