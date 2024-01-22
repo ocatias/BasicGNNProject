@@ -145,19 +145,19 @@ def select_param(parameter_space, hyperparams_path):
         already_checked_params = False
 
         # Check if we have tested that param before
-        for curr_param_to_check in stored_params:
-            same_param = True
-            for key, value in param.items():
-
-                print(f"--{str(key)}", curr_param_to_check["params"][f"--{str(key)}"], str(value))
-                if str(curr_param_to_check["params"][f"--{str(key)}"]) != str(value):
-                    same_param = False
-                    break
-
-            if same_param:
-                print(f"Already tried {param} and got validation score of {curr_param_to_check['val']}")
-                param = None
-                break
+        # for curr_param_to_check in stored_params:
+        #     same_param = True
+        #     for key, value in param.items():
+        #
+        #         print(f"--{str(key)}", curr_param_to_check["params"][f"--{str(key)}"], str(value))
+        #         if str(curr_param_to_check["params"][f"--{str(key)}"]) != str(value):
+        #             same_param = False
+        #             break
+        #
+        #     if same_param:
+        #         print(f"Already tried {param} and got validation score of {curr_param_to_check['val']}")
+        #         param = None
+        #         break
 
     return param
 
