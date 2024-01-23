@@ -451,16 +451,16 @@ class TransforToKWl(BaseTransform):
                 f'(fp={self.agg_function_features_name})'
                 f'(set={self.set_based})(con={self.connected})(att={self.compute_attributes})')
 
-    def __del__(self):
-        print('k', self.k)
-        print('number of vertices in graphs', self.vertices_num)
-        print('number of vertices processed by k-WL', self.k_wl_vertices_num)
-        print('number of graphs reduced to what', self.vertices_reduction)
-        print('average_num_of_vertices', self.average_num_of_vertices)
-        print('average_num_of_new_vertices', self.average_num_of_new_vertices)
-        print('triangle counts', self.stats_triangle_counts)
-        print('last processed data', self.last_processed_data)
-        print('isomorphisms distribution:', self.stats_isomorphism_indexes)
+    # def __del__(self):
+    #     print('k', self.k)
+    #     print('number of vertices in graphs', self.vertices_num)
+    #     print('number of vertices processed by k-WL', self.k_wl_vertices_num)
+    #     print('number of graphs reduced to what', self.vertices_reduction)
+    #     print('average_num_of_vertices', self.average_num_of_vertices)
+    #     print('average_num_of_new_vertices', self.average_num_of_new_vertices)
+    #     print('triangle counts', self.stats_triangle_counts)
+    #     print('last processed data', self.last_processed_data)
+    #     print('isomorphisms distribution:', self.stats_isomorphism_indexes)
 
     # with open(path.join('Results', f'isomorphism_{self.k}_{str(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))}.txt'),
     #           'wt') as f:
@@ -609,30 +609,30 @@ class TransforToKWl(BaseTransform):
 
     def add_dimensions_to_graph_without_modifying(self, data):
         # TODO check this whole function
-        if data.edge_attr.shape[0] == 0:
-            data['edge_attr' + ("" if self.modify else f"_{self.k}")] = empty((0, data.edge_attr.shape[1] + 1),
-                                                                              dtype=int8)
-        else:
-            data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr, pad=(1, 0, 0, 0), value=0)
+        if not self.set_based:
+            if data.edge_attr.shape[0] == 0:
+                data['edge_attr' + ("" if self.modify else f"_{self.k}")] = empty((0, data.edge_attr.shape[1] + 1),
+                                                                                  dtype=int8, device=device())
+            else:
+                data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr, pad=(1, 0, 0, 0),
+                                                                                value=0)
         if not self.modify:
-            data[f"edge_attr_{self.k}"] = zeros((data.edge_index.shape[1], data.edge_attr.shape[1]), dtype=int8)
+            data[f"edge_attr_{self.k}"] = zeros((data.edge_index.shape[1], data.edge_attr.shape[1]), dtype=int8,
+                                                device=device())
         if self.compute_attributes and data.x is not None:
             if self.agg_function_features_name == 'cat':
-                data.x = cat([data.x] * self.k, dim=1)
+                data['x' if self.modify else f"iso_type_{self.k}"] = cat([data.x] * self.k, dim=1)
             data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x, pad=(1, 0, 0, 0), value=0)
         else:
             data['x' if self.modify else f"iso_type_{self.k}"] = zeros((data.num_nodes, 1))
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))])
-        if self.agg_function_features_name == 'cat' and not self.uses_turbo and not self.modify:
+        if self.agg_function_features_name == 'cat' and not self.uses_turbo and not self.set_based:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr,
                                                                             pad=(0, (self.num_edge_repeat - 1) * (
                                                                                     data.edge_attr.shape[1] - 1)),
                                                                             value=0)
-            data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x,
-                                                                     pad=(0, (self.k - 1) * (data.x.shape[1] - 1)),
-                                                                     value=0)
         return data
 
 
