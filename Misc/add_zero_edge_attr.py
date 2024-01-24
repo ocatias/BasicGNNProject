@@ -3,6 +3,8 @@ from torch import cat
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 
+from Models.utils import device
+
 
 class AddZeroEdgeAttr(BaseTransform):
     r"""To make it easy to run GNNs that expect edge_attr on graphs without them, this graph transformation gives every edge a zero edge feature / attribute.
@@ -59,9 +61,10 @@ class AddZeroNodeAttr(BaseTransform):
             # only add attribute ib there are none
             if self.node_attr_size == 0 and data.x.shape[1] > 0:
                 return data
-            data['x'] = cat([torch.zeros((data.num_nodes, max(self.node_attr_size, 1))), data.x], dim=1).long()
+            data['x'] = cat([torch.zeros((data.num_nodes, max(self.node_attr_size, 1)), device=device()), data.x],
+                            dim=1).long()
         else:
-            data['x'] = torch.zeros((data.num_nodes, max(self.node_attr_size, 1)))
+            data['x'] = torch.zeros((data.num_nodes, max(self.node_attr_size, 1)), device=device())
         return data
 
     def __repr__(self) -> str:

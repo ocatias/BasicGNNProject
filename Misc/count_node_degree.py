@@ -3,6 +3,8 @@ from torch.nn.functional import pad
 from torch_geometric.transforms import BaseTransform
 from torch_geometric.data import Data
 
+from Models.utils import device
+
 
 class AddNodeDegree(BaseTransform):
 
@@ -14,9 +16,9 @@ class AddNodeDegree(BaseTransform):
         for i in data.edge_index[0]:
             l[i][0] += 1
         if data.x is not None:
-            data['x'] = cat([ tensor(l), data.x], dim=1).long()
+            data['x'] = cat([ tensor(l, device=device()), data.x], dim=1).long()
         else:
-            data['x'] = tensor(l).long()
+            data['x'] = tensor(l, device=device()).long()
         return data
 
     def __repr__(self) -> str:
