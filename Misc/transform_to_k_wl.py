@@ -624,7 +624,7 @@ class TransforToKWl(BaseTransform):
                 data['x' if self.modify else f"iso_type_{self.k}"] = cat([data.x] * self.k, dim=1)
             data['x' if self.modify else f"iso_type_{self.k}"] = pad(data.x, pad=(1, 0, 0, 0), value=0)
         else:
-            data['x' if self.modify else f"iso_type_{self.k}"] = zeros((data.num_nodes, 1))
+            data['x' if self.modify else f"iso_type_{self.k}"] = zeros((data.num_nodes, 1), device=device())
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))])

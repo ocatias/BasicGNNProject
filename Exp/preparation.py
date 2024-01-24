@@ -179,7 +179,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
         node_feature_dims += get_atom_feature_dims()
         print("node_feature_dims: ", node_feature_dims)
         node_encoder, edge_encoder = \
-            NodeEncoder(args.emb_dim, feature_dims=node_feature_dims, 
+            NodeEncoder(args.emb_dim, feature_dims=node_feature_dims,
                         uses_k_wl_transform=args.transform_k_wl,
                         k_wl_separate=bool(args.k_wl_separate_embedding), additional_features=additional_features), \
                 EdgeEncoder(args.emb_dim,
