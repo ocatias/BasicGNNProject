@@ -594,7 +594,7 @@ class TransforToKWl(BaseTransform):
             print(new_graph[f"assignment_index_{self.k}"])
             raise ValueError(f'values dont match {new_graph.x.shape, max(new_graph[f"assignment_index_{self.k}"][1])}')
 
-        if self.compute_attributes and new_graph.edge_attr is not None and len(new_graph.edge_attr) > 0:
+        if self.compute_attributes and new_graph.edge_attr is not None:
             # new_graph.edge_attr = stack(new_graph.edge_attr)
             pass
         else:
