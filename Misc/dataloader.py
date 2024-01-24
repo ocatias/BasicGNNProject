@@ -1,6 +1,8 @@
 import torch.utils.data
 from torch_geometric.data import Batch
 
+from Models.utils import device
+
 
 def collate(data_list):
     keys = data_list[0].keys()
@@ -25,7 +27,7 @@ def collate(data_list):
     ]
     keys = [x for x in keys if x not in props]
 
-    cumsum_0 = N_0 =cumsum_1 = N_1 = cumsum_2 = N_2 = cumsum_3 = N_3 = 0
+    cumsum_0 = N_0 = cumsum_1 = N_1 = cumsum_2 = N_2 = cumsum_3 = N_3 = 0
 
     for i, data in enumerate(data_list):
         for key in keys:
@@ -33,37 +35,37 @@ def collate(data_list):
 
         N_0 = data.num_nodes
         batch.edge_index.append(data.edge_index + cumsum_0)
-        batch.batch.append(torch.full((N_0, ), i, dtype=torch.long))
+        batch.batch.append(torch.full((N_0,), i, dtype=torch.long, device=device()))
 
         if 'edge_index_1' in data:
             N_1 = data.assignment_index_1[1].max().item() + 1
             batch.edge_index_1.append(data.edge_index_1 + cumsum_1)
             batch.assignment_index_1.append(
                 data.assignment_index_1 +
-                torch.tensor([[cumsum_0], [cumsum_1]]))
-            batch.batch_1.append(torch.full((N_1, ), i, dtype=torch.long))
+                torch.tensor([[cumsum_0], [cumsum_1]], device=device()))
+            batch.batch_1.append(torch.full((N_1,), i, dtype=torch.long, device=device()))
 
         if 'edge_index_2' in data:
             N_2 = data.assignment_index_2[1].max().item() + 1
             batch.edge_index_2.append(data.edge_index_2 + cumsum_2)
             batch.assignment_index_2.append(
                 data.assignment_index_2 +
-                torch.tensor([[cumsum_0], [cumsum_2]]))
-            batch.batch_2.append(torch.full((N_2, ), i, dtype=torch.long))
+                torch.tensor([[cumsum_0], [cumsum_2]], device=device()))
+            batch.batch_2.append(torch.full((N_2,), i, dtype=torch.long, device=device()))
 
         if 'edge_index_3' in data:
             N_3 = data.assignment_index_3[1].max().item() + 1
             batch.edge_index_3.append(data.edge_index_3 + cumsum_3)
             batch.assignment_index_3.append(
                 data.assignment_index_3 +
-                torch.tensor([[cumsum_0], [cumsum_3]]))
-            batch.batch_3.append(torch.full((N_3, ), i, dtype=torch.long))
+                torch.tensor([[cumsum_0], [cumsum_3]], device=device()))
+            batch.batch_3.append(torch.full((N_3,), i, dtype=torch.long, device=device()))
 
         if 'assignment_index_2to3' in data:
             assert 'edge_index_2' in data and 'edge_index_3' in data
             batch.assignment_index_2to3.append(
                 data.assignment_index_2to3 +
-                torch.tensor([[cumsum_2], [cumsum_3]]))
+                torch.tensor([[cumsum_2], [cumsum_3]], device=device()))
 
         cumsum_0 += N_0
         cumsum_1 += N_1
