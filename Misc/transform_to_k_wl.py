@@ -378,6 +378,10 @@ class TransforToKWl(BaseTransform):
             self.stats_isomorphism_indexes[k_x[0]] += 1
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if self.compute_attributes and len_vert_attr > 0:
+                if len(new_x) == 0:
+                    print('graph', graph)
+                    print(all_combinations)
+
                 new_x[i] = cat(
                     (tensor(k_x, device=device()),
                      self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c], False),),
@@ -399,7 +403,8 @@ class TransforToKWl(BaseTransform):
             new_edge_attr = stack(new_edge_attr)
             new_edge_index = tensor(new_edges, device=device())
         else:
-            new_edge_attr = empty((0, len_edge_attr + 1), dtype=int32, device=device())
+            new_edge_attr = empty((0, len_edge_attr if self.set_based else len_edge_attr + 1), dtype=int32,
+                                  device=device())
             new_edge_index = empty((2, 0), dtype=int32, device=device())
         graph[f'assignment_index_{self.k}'] = tensor(mapping_to_assignment_index(all_combinations), device=device())
         graph['edge_index' + ("" if local_modify else f"_{self.k}")] = new_edge_index
