@@ -7,7 +7,8 @@ from Models.utils import device
 
 class NodeEncoder(torch.nn.Module):
 
-    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=0, k_wl_separate=False):
+    def __init__(self, emb_dim, feature_dims=None, uses_k_wl_transform=0, k_wl_separate=False,
+                 additional_features=None):
         super(NodeEncoder, self).__init__()
         self.atom_embedding_list = torch.nn.ModuleList()
         if uses_k_wl_transform > 0 and k_wl_separate:
@@ -19,6 +20,11 @@ class NodeEncoder(torch.nn.Module):
         if feature_dims is None:
             feature_dims = get_atom_feature_dims()
         self.feature_dims = feature_dims
+        if additional_features is not None:
+            self.len_additional_features = len(additional_features)
+            self.feature_dims = additional_features + self.feature_dims
+        else:
+            self.len_additional_features = 0
         if uses_k_wl_transform > 0:
             self.uses_k_wl_transform = bool(uses_k_wl_transform)
             self.k_wl_embeddings = []
@@ -27,8 +33,8 @@ class NodeEncoder(torch.nn.Module):
                 torch.nn.init.xavier_uniform_(emb.weight.data)
                 emb.to(device())
                 self.k_wl_embeddings.append(emb)
-        print('node embedding feature dims', feature_dims)
-        for i, dim in enumerate(feature_dims):
+        print('node embedding feature dims', self.feature_dims)
+        for i, dim in enumerate(self.feature_dims):
             emb = torch.nn.Embedding(dim, emb_dim_local)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             emb.to(device())
@@ -42,14 +48,15 @@ class NodeEncoder(torch.nn.Module):
         i = 0
         try:
             for i in range(x.shape[1]):
-                if k_wl > 0 and i == 0 and self.uses_k_wl_transform:
+                if k_wl > 0 and i == 0 + self.len_additional_features and self.uses_k_wl_transform:
                     k_wl_embedding = self.k_wl_embeddings[k_wl](x[:, i])
                 else:
                     if i >= self.len_embedding_list:
                         # the first position is not repeating
                         x_embedding += self.atom_embedding_list[(i - 1) % self.len_embedding_list](x[:, i])
                     else:
-                        x_embedding += self.atom_embedding_list[i - 1 if k_wl > 0 else i](x[:, i])
+                        x_embedding += self.atom_embedding_list[
+                            i - 1 if k_wl > 0 and i > self.len_additional_features else i](x[:, i])
             if self.k_wl_separate:
                 if not isinstance(x_embedding, int):
                     return cat((k_wl_embedding, x_embedding), dim=1)
