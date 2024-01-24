@@ -7,8 +7,9 @@ import torch
 from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, TUDataset
 import torch.optim as optim
+from torch_geometric.data import Data
 from torch_geometric.utils import to_undirected
-from torch_geometric.transforms import ToUndirected, Compose, OneHotDegree
+from torch_geometric.transforms import ToUndirected, Compose, OneHotDegree, BaseTransform
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims
@@ -24,6 +25,7 @@ from Models.mlp import MLP
 from Misc.drop_features import DropFeatures
 from Misc.add_zero_edge_attr import AddZeroEdgeAttr, AddZeroNodeAttr, DebugTransform
 from Misc.pad_node_attr import PadNodeAttr
+from Models.utils import device
 
 
 def get_filters(args):
@@ -33,8 +35,20 @@ def get_filters(args):
     return ComposeFilters(filters)
 
 
+class ToDevice(BaseTransform):
+
+    def __init__(self, device=0):
+        self.device = device
+
+    def __call__(self, data: Data) -> Data:
+        return data.to(self.device)
+
+    def __repr__(self) -> str:
+        return (f'{self.__class__.__name__}')
+
+
 def get_transform(args, split=None):
-    transforms = []
+    transforms = [ToDevice(device=device())]
 
     if args.do_drop_feat:
         emb_dim = args.emb_dim
