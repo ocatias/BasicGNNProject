@@ -160,7 +160,7 @@ class TransforToKWl(BaseTransform):
         self.processed_num = 0
         self.agg_function_features_name = agg_function_features
         if agg_function_features is None or agg_function_features == 'mode':
-            self.agg_function_features = lambda x, y: mode(stack(x), dim=0).values
+            self.agg_function_features = lambda x, y: tensor(mode(stack(x), dim=0).values, device=device())
             self.num_edge_repeat = 1
         elif agg_function_features == 'cat':
             # there is always only 1 different vertex in vertex groups for new vertexes.
@@ -379,7 +379,8 @@ class TransforToKWl(BaseTransform):
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if self.compute_attributes and len_vert_attr > 0:
                 new_x[i] = cat(
-                    (tensor(k_x, device=device()), self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c], False),),
+                    (tensor(k_x, device=device()),
+                     self.agg_function_features([graph.x[j].reshape(len_vert_attr) for j in c], False),),
                     0)
             else:
                 new_x[i] = tensor(k_x, device=device()).long()
@@ -628,7 +629,8 @@ class TransforToKWl(BaseTransform):
             data['x' if self.modify else f"iso_type_{self.k}"] = zeros((data.num_nodes, 1), device=device())
         if not self.modify:
             data['edge_index' + f"_{self.k}"] = data['edge_index']
-        data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))], device=device())
+        data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))],
+                                                         device=device())
         if self.agg_function_features_name == 'cat' and not self.uses_turbo and not self.set_based:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr,
                                                                             pad=(0, (self.num_edge_repeat - 1) * (
