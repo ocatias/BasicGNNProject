@@ -378,9 +378,6 @@ class TransforToKWl(BaseTransform):
             self.stats_isomorphism_indexes[k_x[0]] += 1
             # adding all vertex features from the vertex in the subgraph using mode to keep the dimensionality.
             if self.compute_attributes and len_vert_attr > 0:
-                if len(new_x) == 0:
-                    print('graph', graph)
-                    print(all_combinations)
 
                 new_x[i] = cat(
                     (tensor(k_x, device=device()),
@@ -389,6 +386,10 @@ class TransforToKWl(BaseTransform):
             else:
                 new_x[i] = tensor(k_x, device=device()).long()
 
+        if len(new_x) == 0:
+            print('graph', graph)
+            print(all_combinations)
+            print(new_edges)
         graph['iso_type' + ("" if local_modify else f"_{self.k}")] = stack(new_x).squeeze(dim=1)
 
         if 'x' in graph and len(graph.x.shape) == 1:
