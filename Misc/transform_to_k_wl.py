@@ -317,6 +317,8 @@ class TransforToKWl(BaseTransform):
                 len_edge_attr = graph.edge_attr.shape[1]
         else:
             len_edge_attr = 0
+        if not self.compute_attributes:
+            len_edge_attr = 1
         self.nan_tensor_edge_features = tensor([float('NaN')] * len_edge_attr, device=device())
         if graph.x is not None:
             if len(graph.x.shape) == 1:
@@ -625,8 +627,10 @@ class TransforToKWl(BaseTransform):
                 data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr, pad=(1, 0, 0, 0),
                                                                                 value=0)
         if not self.modify:
-            data[f"edge_attr_{self.k}"] = zeros((data.edge_index.shape[1], data.edge_attr.shape[1]), dtype=int8,
-                                                device=device())
+            data[f"edge_attr_{self.k}"] = zeros(
+                (data.edge_index.shape[1], data.edge_attr.shape[1] if self.compute_attributes else 1), dtype=int8,
+                device=device())
+
         if self.compute_attributes and data.x is not None:
             if self.agg_function_features_name == 'cat':
                 data['x' if self.modify else f"iso_type_{self.k}"] = cat([data.x] * self.k, dim=1)
@@ -637,7 +641,8 @@ class TransforToKWl(BaseTransform):
             data['edge_index' + f"_{self.k}"] = data['edge_index']
         data['assignment_index' + f"_{self.k}"] = tensor([list(range(data.num_nodes)), list(range(data.num_nodes))],
                                                          device=device())
-        if self.agg_function_features_name == 'cat' and not self.uses_turbo and not self.set_based:
+        if self.agg_function_features_name == 'cat' and not self.uses_turbo and not self.set_based \
+                and self.compute_attributes:
             data['edge_attr' + ("" if self.modify else f"_{self.k}")] = pad(data.edge_attr,
                                                                             pad=(0, (self.num_edge_repeat - 1) * (
                                                                                     data.edge_attr.shape[1] - 1)),
