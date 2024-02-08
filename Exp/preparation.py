@@ -95,10 +95,16 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
         return MPNN(num_classes, num_tasks, args.num_layers, args.emb_dim, 
                 gnn_type = model, drop_ratio = args.drop_out, JK = "last", 
                 graph_pooling = args.pooling, edge_encoder=edge_encoder, node_encoder=node_encoder, 
-                num_mlp_layers = args.num_mlp_layers, residual=args.use_residual)
+                num_mlp_layers = args.num_mlp_layers, residual=args.use_residual, activation=args.activation)
     elif args.model.lower() == "mlp":
-            return MLP(num_features=num_vertex_features, num_layers=args.num_layers, hidden=args.emb_dim, 
-                    num_classes=num_classes, num_tasks=num_tasks, dropout_rate=args.drop_out, graph_pooling=args.pooling)
+            return MLP(num_layers = args.num_layers, 
+                       node_encoder = node_encoder, 
+                       emb_dim = args.emb_dim, 
+                       num_classes = num_classes, 
+                       num_tasks = num_tasks, 
+                       dropout_rate = args.drop_out, 
+                       graph_pooling = args.pooling, 
+                       activation = args.activation)
     else: # Probably don't need other models
         raise ValueError("Unknown model name")
 

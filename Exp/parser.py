@@ -73,7 +73,7 @@ def parse_args(passed_args=None):
                         help='Dimensionality of hidden units in models (default: 64)')
     parser.add_argument('--num_layers', type=int, default=5,
                         help='Number of message passing layers (default: 5) or number of layers of the MLP')
-    parser.add_argument('--num_mlp_layers', type=int, default=1,
+    parser.add_argument('--num_mlp_layers', type=int, default=2,
                         help='Number of layers in the MLP that performs predictions on the embedding computed by the GNN (default: 1)')
     parser.add_argument('--virtual_node', type=int, default=0,
                         help='Set 1 to use a virtual node, that is a node that is adjacent to every node in the graph (default: 0)')
@@ -83,6 +83,8 @@ def parse_args(passed_args=None):
     
     parser.add_argument('--pooling', type=str, default="mean",
                         help='Graph pooling operation to use (default: mean; other options: sum)')
+    parser.add_argument('--activation', type=str, default="relu",
+                        help='Activation function (default: relu; other options: elu, id, sigmoid, tanh)')
     parser.add_argument('--node_encoder', type=int, default=1,
                         help="Set to 0 to disable to node encoder (default: 1)")
 
