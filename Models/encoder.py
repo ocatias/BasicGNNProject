@@ -3,6 +3,9 @@ import torch
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims 
 
 class NodeEncoder(torch.nn.Module):
+    """
+    Adapted from https://github.com/snap-stanford/ogb/blob/master/ogb/graphproppred/mol_encoder.py (MIT License)
+    """
 
     def __init__(self, emb_dim, feature_dims = None):
         super(NodeEncoder, self).__init__()
@@ -26,6 +29,9 @@ class NodeEncoder(torch.nn.Module):
 
 
 class EdgeEncoder(torch.nn.Module):
+    """
+    Adapted from https://github.com/snap-stanford/ogb/blob/master/ogb/graphproppred/mol_encoder.py (MIT License)
+    """
     
     def __init__(self, emb_dim, feature_dims = None):
         super(EdgeEncoder, self).__init__()

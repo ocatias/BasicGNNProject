@@ -77,7 +77,10 @@ def parse_args(passed_args=None):
                         help='Number of layers in the MLP that performs predictions on the embedding computed by the GNN (default: 1)')
     parser.add_argument('--virtual_node', type=int, default=0,
                         help='Set 1 to use a virtual node, that is a node that is adjacent to every node in the graph (default: 0)')
-
+    parser.add_argument('--residual', type=int, default=0,
+                        help='Set 1 for a residual connection in MPNNs (default: 0)')
+    
+    
     parser.add_argument('--pooling', type=str, default="mean",
                         help='Graph pooling operation to use (default: mean; other options: sum)')
     parser.add_argument('--node_encoder', type=int, default=1,
@@ -97,6 +100,7 @@ def parse_args(passed_args=None):
     args.__dict__["use_virtual_node"] = args.virtual_node == 1
     args.__dict__["use_node_encoder"] = args.node_encoder == 1
     args.__dict__["do_drop_feat"] = args.drop_feat == 1
+    args.__dict__["use_residual"] = args.residual == 1
 
     # https://codereview.stackexchange.com/a/79015
     # If a config file is provided, write it's values into the arguments

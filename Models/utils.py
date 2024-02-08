@@ -33,7 +33,7 @@ def get_pooling_fn(readout):
     elif readout == 'mean':
         return global_mean_pool
     else:
-        raise NotImplementedError('Readout {} is not currently supported.'.format(readout))
+        raise NotImplementedError(f"Readout {readout} is not currently supported.")
 
 
 def get_graph_norm(norm):
