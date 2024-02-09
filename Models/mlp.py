@@ -13,7 +13,7 @@ class MLP(torch.nn.Module):
     """
     MLP model that completely ignores the edges and edge features.
     """
-    def __init__(self, num_layers, node_encoder, emb_dim, num_classes, num_tasks, dropout_rate, graph_pooling, activation):
+    def __init__(self, num_node_level_layers, num_graph_level_layers, node_encoder, emb_dim, num_classes, num_tasks, dropout_rate, graph_pooling, activation):
         super(MLP, self).__init__()
 
         self.num_classes = num_classes
@@ -21,13 +21,13 @@ class MLP(torch.nn.Module):
         self.node_encoder = node_encoder
         self.activation =  get_activation(activation)
         self.pool = get_pooling_fct(graph_pooling)
-        self.node_level_mlp = get_mlp(num_layers=num_layers, 
+        self.node_level_mlp = get_mlp(num_layers=num_node_level_layers, 
                                       in_dim = emb_dim, 
                                       out_dim = emb_dim, 
                                       hidden_dim = emb_dim // 2, 
                                       activation = self.activation, 
                                       dropout_rate = dropout_rate)
-        self.graph_level_mlp = get_mlp(num_layers = num_layers, 
+        self.graph_level_mlp = get_mlp(num_layers = num_graph_level_layers, 
                                        in_dim = emb_dim, 
                                        out_dim = num_tasks*num_classes, 
                                        hidden_dim = emb_dim // 2, 

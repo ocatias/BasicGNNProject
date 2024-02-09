@@ -110,15 +110,15 @@ def eval(model, device, loader, loss_fn, eval_name, metric_method=None):
     
     return eval_dict
 
-def step_scheduler(scheduler, args, val_loss):
+def step_scheduler(scheduler, scheduler_name, val_loss):
     """
         Steps the learning rate scheduler forward by one
     """
-    if args.lr_scheduler == 'StepLR':
+    if scheduler_name == 'StepLR':
         scheduler.step()
-    elif args.lr_scheduler == 'None':
+    elif scheduler_name == 'None':
         pass
-    elif args.lr_scheduler == "ReduceLROnPlateau":
+    elif scheduler_name == "ReduceLROnPlateau":
          scheduler.step(val_loss)
     else:
-        raise NotImplementedError(f'Scheduler {args.lr_scheduler} is not currently supported.')
+        raise NotImplementedError(f'Scheduler {scheduler_name} is not currently supported.')

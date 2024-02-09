@@ -92,12 +92,13 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
         node_encoder, edge_encoder = lambda x: x, lambda x: x
             
     if model in ["gin", "gcn", "gat"]:  
-        return MPNN(num_classes, num_tasks, args.num_layers, args.emb_dim, 
+        return MPNN(num_classes, num_tasks, args.num_mp_layers, args.emb_dim, 
                 gnn_type = model, drop_ratio = args.drop_out, JK = "last", 
                 graph_pooling = args.pooling, edge_encoder=edge_encoder, node_encoder=node_encoder, 
                 num_mlp_layers = args.num_mlp_layers, residual=args.use_residual, activation=args.activation)
     elif args.model.lower() == "mlp":
-            return MLP(num_layers = args.num_layers, 
+            return MLP(num_node_level_layers = args.num_n_layers,
+                       num_graph_level_layers = args.num_g_layers,
                        node_encoder = node_encoder, 
                        emb_dim = args.emb_dim, 
                        num_classes = num_classes, 
@@ -111,28 +112,25 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     return model
 
 
-def get_optimizer_scheduler(model, args, finetune = False):
-    
-    if finetune:
-        lr = args.lr2
-    else:
-        lr = args.lr
+def get_optimizer_scheduler(model, args):
+    lr = args.lr
+    scheduler_name = args.scheduler
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    if args.lr_scheduler == 'StepLR':
+    if scheduler_name == 'StepLR':
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 
-                                                    args.lr_scheduler_decay_steps,
-                                                    gamma=args.lr_scheduler_decay_rate)
-    elif args.lr_scheduler == 'None':
+                                                    args.scheduler_decay_steps,
+                                                    gamma=args.scheduler_decay_rate)
+    elif scheduler_name == 'None':
         scheduler = None
-    elif args.lr_scheduler == "ReduceLROnPlateau":
+    elif scheduler_name == "ReduceLROnPlateau":
          scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                                 mode='min',
-                                                                factor=args.lr_scheduler_decay_rate,
-                                                                patience=args.lr_schedule_patience,
+                                                                factor=args.scheduler_decay_rate,
+                                                                patience=args.scheduler_patience,
                                                                 verbose=True)
     else:
-        raise NotImplementedError(f'Scheduler {args.lr_scheduler} is not currently supported.')
+        raise NotImplementedError(f'Scheduler {scheduler_name} is not currently supported.')
 
     return optimizer, scheduler
 

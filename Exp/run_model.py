@@ -91,10 +91,10 @@ def main(args):
         if use_tracking:
             track_epoch(epoch, eval_name, train_result, val_result, test_result, optimizer.param_groups[0]['lr'])
 
-        step_scheduler(scheduler, args, val_result["total_loss"])
+        step_scheduler(scheduler, args.scheduler, val_result["total_loss"])
 
         # EXIT CONDITIONS
-        if optimizer.param_groups[0]['lr'] < args.min_lr:
+        if optimizer.param_groups[0]['lr'] < args.scheduler_min_lr:
                 print("\nLR reached minimum: exiting.")
                 break
 
