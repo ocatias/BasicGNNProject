@@ -41,6 +41,7 @@ def main(args):
     print(args)
     device = args.device
     use_tracking = args.use_tracking
+    dataset_name = args.dataset
     
     set_seed(args.seed)
     train_loader, val_loader, test_loader = load_dataset(args, config)
@@ -62,7 +63,7 @@ def main(args):
     nr_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model.to(device)
     optimizer, scheduler = get_optimizer_scheduler(model, args)
-    loss_dict = get_loss(args)
+    loss_dict = get_loss(dataset_name)
     loss_fct = loss_dict["loss"]
     eval_name = loss_dict["metric"]
     metric_method = loss_dict["metric_method"]

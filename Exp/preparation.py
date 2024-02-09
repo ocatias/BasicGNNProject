@@ -18,13 +18,13 @@ from Misc.drop_features import DropFeatures
 from Misc.add_zero_edge_attr import AddZeroEdgeAttr
 from Misc.pad_node_attr import PadNodeAttr
 
-def get_transform(args, split = None):
+def get_transform(args):
     transforms = []
-    if args.dataset.lower() == "csl":
+    dataset_name_lowercase = args.dataset.lower()
+    if dataset_name_lowercase == "csl":
         transforms.append(OneHotDegree(5))
         
-    # Pad features if necessary (needs to be done after adding additional features from other transformation)
-    if args.dataset.lower() == "csl":
+        # Pad features if necessary (needs to be done after adding additional features from other transformation)
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
       
@@ -134,30 +134,31 @@ def get_optimizer_scheduler(model, args):
 
     return optimizer, scheduler
 
-def get_loss(args):
+def get_loss(dataset_name):
     metric_method = None
-    if args.dataset.lower() == "zinc":
+    dataset_name_lowercase = dataset_name.lower()
+    if dataset_name_lowercase == "zinc":
         loss = torch.nn.L1Loss()
         metric = "mae"
-    elif args.dataset.lower() in ["ogbg-molesol", "ogbg-molfreesolv", "ogbg-mollipo"]:
+    elif dataset_name_lowercase in ["ogbg-molesol", "ogbg-molfreesolv", "ogbg-mollipo"]:
         loss = torch.nn.L1Loss()
         metric = "rmse (ogb)"
-        metric_method = get_evaluator(args.dataset)
-    elif args.dataset.lower() in ["cifar10", "csl", "exp", "cexp"]:
+        metric_method = get_evaluator(dataset_name)
+    elif dataset_name_lowercase in ["cifar10", "csl", "exp", "cexp"]:
         loss = torch.nn.CrossEntropyLoss()
         metric = "accuracy"
-    elif args.dataset in ["ogbg-molhiv", "ogbg-moltox21", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molsider", "ogbg-moltoxcast"]:
+    elif dataset_name_lowercase in ["ogbg-molhiv", "ogbg-moltox21", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molsider", "ogbg-moltoxcast"]:
         loss = torch.nn.BCEWithLogitsLoss()
         metric = "rocauc (ogb)" 
-        metric_method = get_evaluator(args.dataset)
-    elif args.dataset == "ogbg-ppa":
+        metric_method = get_evaluator(dataset_name)
+    elif dataset_name_lowercase == "ogbg-ppa":
         loss = torch.nn.BCEWithLogitsLoss()
         metric = "accuracy (ogb)" 
-        metric_method = get_evaluator(args.dataset)
-    elif args.dataset in ["ogbg-molpcba", "ogbg-molmuv"]:
+        metric_method = get_evaluator(dataset_name)
+    elif dataset_name_lowercase in ["ogbg-molpcba", "ogbg-molmuv"]:
         loss = torch.nn.BCEWithLogitsLoss()
         metric = "ap (ogb)" 
-        metric_method = get_evaluator(args.dataset)
+        metric_method = get_evaluator(dataset_name)
     else:
         raise NotImplementedError("No loss for this dataset")
     

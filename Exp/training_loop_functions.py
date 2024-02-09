@@ -49,7 +49,7 @@ def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dic
     tracking_dict["total_loss"] += loss.item()*batch_size
     return loss
 
-def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metric_method=None,train=False):
+def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metric_method, train=False):
     output_dict["total_loss"] = tracking_dict["total_loss"] / len(loader.dataset)
     if train:
         return output_dict
@@ -76,7 +76,7 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
         
     return output_dict
 
-def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking, metric_method=None):
+def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking, metric_method):
     """
         Performs one training epoch, i.e. one optimization pass over the batches of a data loader.
     """
@@ -95,7 +95,7 @@ def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_track
             
     return compute_final_tracking_dict(tracking_dict, {}, train_loader, eval_name, metric_method=metric_method, train=True)
 
-def eval(model, device, loader, loss_fn, eval_name, metric_method=None):
+def eval(model, device, loader, loss_fn, eval_name, metric_method):
     """
         Evaluates a model over all the batches of a data loader.
     """
