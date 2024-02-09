@@ -78,11 +78,14 @@ def add_model_arguments(parser, model):
 def parse_with_config_and_parsed_args(parser, passed_args, do_parse_only_known):
     # Load partial args instead of command line args (if they are given)
     
+    # [Case parser is given just enough args to infer the missing args]: ignore the unknown commandline arguments
     if do_parse_only_known:
         if passed_args is None:
             args, _ = parser.parse_known_args()
         else:
             args, _ = parser.parse_known_args(transform_dict_to_args_list(passed_args))  
+            
+    # [Case parser has infered the missing args]: parse every command line argument to ensure that all arguments make sense
     else:      
         if passed_args is None:
             args = parser.parse_args()
