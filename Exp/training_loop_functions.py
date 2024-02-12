@@ -2,6 +2,7 @@ import torch
 import wandb
 from ogb.graphproppred import Evaluator
 import torch.nn.functional as F
+from sklearn.metrics import average_precision_score
 
 from Exp.preparation import get_evaluator
 
@@ -73,7 +74,35 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
         y_true = torch.unsqueeze(y_true, dim = 1)
         l1 = torch.nn.L1Loss()
         output_dict["mae"] = float(l1(y_preds, y_true))
-        
+    elif metric == 'ap':
+        sigmoid = torch.nn.Sigmoid()
+        y_preds = sigmoid(torch.stack(tracking_dict["y_preds"]))
+        y_true = torch.stack(tracking_dict["y_true"])
+        if len(y_preds.shape) == 1:
+            y_preds = torch.unsqueeze(y_preds, dim = 1)
+            y_true = torch.unsqueeze(y_true, dim = 1)
+            
+        # From https://github.com/snap-stanford/ogb/blob/master/ogb/graphproppred/evaluate.py (MIT License)
+
+        ap_list = []
+        for i in range(y_true.shape[1]):
+            #AUC is only defined when there is at least one positive data.
+            
+            true_values = sum(y_true[:,i] == 1)
+            false_values = sum(y_true[:,i] == 0)
+            
+            assert true_values > 0 and false_values > 0
+     
+            # ignore nan values
+            is_labeled = y_true[:,i] == y_true[:,i]
+            ap = average_precision_score(y_true[is_labeled,i], y_preds[is_labeled,i])
+
+            ap_list.append(ap)
+        ap =  sum(ap_list)/len(ap_list)
+        output_dict["ap"] = float(ap)
+    else:
+        raise Exception("Unknown metric name")
+    
     return output_dict
 
 def train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method):
@@ -114,7 +143,7 @@ def step_scheduler(scheduler, scheduler_name, val_loss):
     """
         Steps the learning rate scheduler forward by one
     """
-    if scheduler_name == 'StepLR':
+    if scheduler_name in ["StepLR", "Cosine"]:
         scheduler.step()
     elif scheduler_name == 'None':
         pass

@@ -23,7 +23,7 @@ def add_general_arguments(parser):
     parser.add_argument('--dataset', type=str, default="ZINC",
                     help='Dataset name (default: ZINC; other options: CSL and most datasets from ogb, see ogb documentation)')
     parser.add_argument('--scheduler', type=str, default='ReduceLROnPlateau',
-                    help='Learning rate decay scheduler (default: ReduceLROnPlateau; other options: StepLR, None; For details see PyTorch documentation)')
+                    help='Learning rate decay scheduler (default: ReduceLROnPlateau; other options: StepLR, Cosine, None)')
     parser.add_argument('--tracking', type=int, default=config.use_tracking,
                         help=f'If 0 runs without tracking (Default: {str(config.use_tracking)})')
     
@@ -115,6 +115,9 @@ def add_scheduler_args(parser, scheduler):
                             help='(For ReduceLROnPlateau scheduler) mininum learnin rate (default: 1e-5)')
         parser.add_argument('--scheduler_patience', type=int, default=10,
                             help='(For ReduceLROnPlateau scheduler) number of epochs without improvement until the LR will be reduced')
+    elif scheduler == "Cosine":
+        parser.add_argument('--warmup_steps', type=int, default=0,
+                            help='(For Cosine scheduler) Number of epochs with linear warmup (default: 0)')
 
 args_with_use = ["tracking", "residual"]
 args_with_do = ["drop_feat"]

@@ -4,18 +4,21 @@ from torch_geometric.nn import global_mean_pool, global_add_pool, global_max_poo
 from torch.nn import Identity, Dropout, BatchNorm1d, Sequential, Linear
 
 def get_activation(activation):
-    if activation == 'relu':
-        return torch.nn.ReLU()
-    elif activation == 'elu':
-        return torch.nn.ELU()
-    elif activation == 'id':
-        return torch.nn.Identity()
-    elif activation == 'sigmoid':
-        return torch.nn.Sigmoid()
-    elif activation == 'tanh':
-        return torch.nn.Tanh()
-    else:
-        raise NotImplementedError(f"Activation {activation} not implemented")
+    match activation:
+        case 'relu':
+            return torch.nn.ReLU()
+        case 'elu':
+            return torch.nn.ELU()
+        case 'id':
+            return torch.nn.Identity()
+        case 'sigmoid':
+            return torch.nn.Sigmoid()
+        case 'tanh':
+            return torch.nn.Tanh()
+        case 'gelu':
+            return torch.nn.GELU()
+        case _:
+            raise NotImplementedError(f"Activation {activation} not implemented")
 
 def get_pooling_fct(readout):    
     if readout == "sum":

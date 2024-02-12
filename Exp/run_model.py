@@ -63,6 +63,10 @@ def main(args):
     nr_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model.to(device)
     optimizer, scheduler = get_optimizer_scheduler(model, args)
+    use_scheduler_with_early_stopping = args.scheduler == "ReduceLROnPlateau"
+    if use_scheduler_with_early_stopping:
+        print("Using a scheduler that supports early stopping")
+    
     loss_dict = get_loss(dataset_name)
     loss_fct = loss_dict["loss"]
     eval_name = loss_dict["metric"]
@@ -93,7 +97,7 @@ def main(args):
         step_scheduler(scheduler, args.scheduler, val_result["total_loss"])
 
         # EXIT CONDITIONS
-        if optimizer.param_groups[0]['lr'] < args.scheduler_min_lr:
+        if use_scheduler_with_early_stopping and optimizer.param_groups[0]['lr'] < args.scheduler_min_lr:
                 print("\nLR reached minimum: exiting.")
                 break
 
