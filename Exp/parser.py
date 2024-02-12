@@ -24,8 +24,8 @@ def add_general_arguments(parser):
                     help='Dataset name (default: ZINC; other options: CSL and most datasets from ogb, see ogb documentation)')
     parser.add_argument('--scheduler', type=str, default='ReduceLROnPlateau',
                     help='Learning rate decay scheduler (default: ReduceLROnPlateau; other options: StepLR, None; For details see PyTorch documentation)')
-    parser.add_argument('--tracking', type=int, default=config.use_wandb_tracking,
-                        help=f'If 0 runs without tracking (Default: {str(config.use_wandb_tracking)})')
+    parser.add_argument('--tracking', type=int, default=config.use_tracking,
+                        help=f'If 0 runs without tracking (Default: {str(config.use_tracking)})')
     
 def add_training_arguments(parser):
     parser.add_argument('--max_time', type=float, default=12,

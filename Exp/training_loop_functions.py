@@ -76,7 +76,7 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
         
     return output_dict
 
-def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking, metric_method):
+def train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method):
     """
         Performs one training epoch, i.e. one optimization pass over the batches of a data loader.
     """
@@ -90,8 +90,8 @@ def train(model, device, train_loader, optimizer, loss_fct, eval_name, use_track
         loss.backward()
         optimizer.step()
 
-        if use_tracking:
-            wandb.log({"Train/BatchLoss": loss.item()})
+        if tracker is not None:
+            tracker.log({"Train/BatchLoss": loss.item()})
             
     return compute_final_tracking_dict(tracking_dict, {}, train_loader, eval_name, metric_method=metric_method, train=True)
 
