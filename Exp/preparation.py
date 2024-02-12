@@ -70,12 +70,12 @@ def load_dataset(args, config):
         datasets = [LRGBDataset(root=dir, name='Peptides-func', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
     elif dataset_name == "peptides-struct":
         datasets = [LRGBDataset(root=dir, name='Peptides-struct', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
-    elif dataset_name == "pascalvoc-sp":
-        datasets = [LRGBDataset(root=dir, name='PascalVOC-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
-    elif dataset_name == "coco-sp":
-        datasets = [LRGBDataset(root=dir, name='COCO-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
-    elif dataset_name == "pcqm-contact":
-        datasets = [LRGBDataset(root=dir, name='PCQM-Contact', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
+    # elif dataset_name == "pascalvoc-sp":
+    #     datasets = [LRGBDataset(root=dir, name='PascalVOC-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
+    # elif dataset_name == "coco-sp":
+    #     datasets = [LRGBDataset(root=dir, name='COCO-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
+    # elif dataset_name == "pcqm-contact":
+    #     datasets = [LRGBDataset(root=dir, name='PCQM-Contact', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
         
     else:
         raise NotImplementedError("Unknown dataset")
