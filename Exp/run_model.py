@@ -47,6 +47,9 @@ def main(args):
     train_loader, val_loader, test_loader = load_dataset(args, config)
     num_classes, num_vertex_features = train_loader.dataset.num_classes, train_loader.dataset.num_node_features
     
+    if "qm9" in dataset_name.lower() and "_" in  dataset_name.lower():
+        num_classes = 1
+    
     if args.dataset.lower() == "zinc" or "ogb" in args.dataset.lower():
         num_classes = 1
    

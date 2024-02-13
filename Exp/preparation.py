@@ -3,7 +3,7 @@ import csv
 
 import torch
 from torch_geometric.loader import DataLoader
-from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, LRGBDataset
+from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, LRGBDataset, QM9
 import torch.optim as optim
 from torch_geometric.utils import to_undirected
 from torch_geometric.transforms import ToUndirected, Compose, OneHotDegree
@@ -18,6 +18,7 @@ from Misc.drop_features import DropFeatures
 from Misc.add_zero_edge_attr import AddZeroEdgeAttr
 from Misc.pad_node_attr import PadNodeAttr
 from Misc.cosine_scheduler import get_cosine_schedule_with_warmup
+from Misc.select_only_one_target import SelectOnlyOneTarget
 
 def get_transform(args):
     transforms = []
@@ -28,11 +29,25 @@ def get_transform(args):
         # Pad features if necessary (needs to be done after adding additional features from other transformation)
         transforms.append(AddZeroEdgeAttr(args.emb_dim))
         transforms.append(PadNodeAttr(args.emb_dim))
-      
+        
+    # For dataset name QM9_i we only predict the i-th target value
+    if "qm9" in dataset_name_lowercase and "_" in dataset_name_lowercase:
+        target = int(dataset_name_lowercase.split("_")[1])
+        assert target >= 0 and target <= 18
+        transforms.append(SelectOnlyOneTarget(target))
+         
     if args.do_drop_feat:
         transforms.append(DropFeatures(args.emb_dim))
 
     return Compose(transforms)
+
+def load_indices(dataset_name, config):
+    all_idx = {}
+    for section in ['train', 'val', 'test']:
+        with open(os.path.join(config.SPLITS_PATH, dataset_name,  f"{section}.index"), 'r') as f:
+            reader = csv.reader(f)
+            all_idx[section] = [list(map(int, idx)) for idx in reader]
+    return all_idx
 
 def load_dataset(args, config):
     transform = get_transform(args)
@@ -57,13 +72,9 @@ def load_dataset(args, config):
         
     # Cyclic Skip Link dataset
     elif dataset_name == "csl":
-        all_idx = {}
-        for section in ['train', 'val', 'test']:
-            with open(os.path.join(config.SPLITS_PATH, "CSL",  f"{section}.index"), 'r') as f:
-                reader = csv.reader(f)
-                all_idx[section] = [list(map(int, idx)) for idx in reader]
+        indices = load_indices("CSL", config)
         dataset = GNNBenchmarkDataset(name ="CSL", root=dir, pre_transform=transform)
-        datasets = [dataset[all_idx["train"][args.split]], dataset[all_idx["val"][args.split]], dataset[all_idx["test"][args.split]]]
+        datasets = [dataset[indices["train"][args.split]], dataset[indices["val"][args.split]], dataset[indices["test"][args.split]]]
         
     # Long Rage Graph Benchmark datsets
     elif dataset_name == "peptides-func":
@@ -77,27 +88,36 @@ def load_dataset(args, config):
     # elif dataset_name == "pcqm-contact":
     #     datasets = [LRGBDataset(root=dir, name='PCQM-Contact', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
         
+    elif "qm9" in dataset_name:
+        dataset = QM9(root=dir, pre_transform=transform)
+        indices = load_indices("QM9", config)
+        datasets = [dataset[indices["train"][0]], dataset[indices["val"][0]], dataset[indices["test"][0]]]
     else:
         raise NotImplementedError("Unknown dataset")
         
     train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
     test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
-
     return train_loader, val_loader, test_loader
 
 def get_model(args, num_classes, num_vertex_features, num_tasks):
     node_feature_dims = []
     model = args.model.lower()
+    dataset_name = args.dataset.lower()
 
     # Load node and edge encoder
-    if args.dataset.lower() == "zinc"and not args.do_drop_feat:
+    if dataset_name == "zinc"and not args.do_drop_feat:
         node_feature_dims.append(21)
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
         edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[4])
-    elif args.dataset.lower() in ["peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
+    elif dataset_name in ["peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
         node_feature_dims += get_atom_feature_dims()
         node_encoder, edge_encoder = NodeEncoder(args.emb_dim, feature_dims=node_feature_dims), EdgeEncoder(args.emb_dim)
+    elif "qm9" in dataset_name:
+        node_feature_dims += [2, 2, 2, 2, 2, 10, 1, 1, 1, 1, 5]
+        edge_feature_dims = [2, 2, 2, 1]
+        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
+        edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
             
@@ -161,7 +181,7 @@ def get_optimizer_scheduler(model, args):
 def get_loss(dataset_name):
     metric_method = None
     dataset_name_lowercase = dataset_name.lower()
-    if dataset_name_lowercase in ["zinc", "peptides-struct"]:
+    if dataset_name_lowercase in ["zinc", "peptides-struct"] or "qm9" in dataset_name_lowercase:
         loss = torch.nn.L1Loss()
         metric = "mae"
     elif dataset_name_lowercase in ["ogbg-molesol", "ogbg-molfreesolv", "ogbg-mollipo"]:
