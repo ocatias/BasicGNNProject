@@ -50,7 +50,7 @@ def main(args):
     if "qm9" in dataset_name.lower() and "_" in  dataset_name.lower():
         num_classes = 1
     
-    if args.dataset.lower() == "zinc" or "ogb" in args.dataset.lower():
+    if args.dataset.lower() in ["zinc", "zinc_full"] or "ogb" in args.dataset.lower():
         num_classes = 1
    
     try:

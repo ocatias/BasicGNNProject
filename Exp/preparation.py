@@ -71,8 +71,9 @@ def load_dataset(args, config):
         dir = os.path.join(config.DATA_PATH, args.dataset, trafo_str)
 
     # ZINC
-    if dataset_name == "zinc":
-        datasets = [ZINC(root=dir, subset=True, split=split, pre_transform=transform) for split in ["train", "val", "test"]]
+    if dataset_name in ["zinc", "zinc_full"]:
+        subset = "full" not in dataset_name
+        datasets = [ZINC(root=dir, subset=subset, split=split, pre_transform=transform) for split in ["train", "val", "test"]]
         
     # OGB graph level tasks
     elif dataset_name in ["ogbg-molhiv", "ogbg-ppa", "ogbg-code2", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
@@ -126,8 +127,8 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     if args.model.lower() in ["dss", "ds"] and args.policy == "ego_nets_plus":
         node_feature_dims += [2,2]
         
-    if dataset_name == "zinc"and not args.do_drop_feat:
-        node_feature_dims.append(21)
+    if "zinc" in dataset_name and not args.do_drop_feat:
+        node_feature_dims.append(28)
         edge_feature_dims.append(4)
     elif dataset_name in ["peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
         node_feature_dims += get_atom_feature_dims()
@@ -136,7 +137,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
         node_feature_dims += [2, 2, 2, 2, 2, 10, 1, 1, 1, 1, 5]
         edge_feature_dims += [2, 2, 2, 1]
          
-    if "qm9" in dataset_name or dataset_name in ["zinc", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
+    if "qm9" in dataset_name or dataset_name in ["zinc", "zinc_full", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
         edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
     else:
@@ -235,7 +236,7 @@ def get_optimizer_scheduler(model, args):
 def get_loss(dataset_name):
     metric_method = None
     dataset_name_lowercase = dataset_name.lower()
-    if dataset_name_lowercase in ["zinc", "peptides-struct"] or "qm9" in dataset_name_lowercase:
+    if dataset_name_lowercase in ["peptides-struct", "zinc", "zinc_full"] or "qm9" in dataset_name_lowercase:
         loss = torch.nn.L1Loss()
         metric = "mae"
     elif dataset_name_lowercase in ["ogbg-molesol", "ogbg-molfreesolv", "ogbg-mollipo"]:
