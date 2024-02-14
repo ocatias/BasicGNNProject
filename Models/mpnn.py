@@ -6,14 +6,26 @@ import torch.nn.functional as F
 
 from Models.utils import get_pooling_fct, get_activation, get_mlp
 
+def get_mp_layer(emb_dim, activation, mp_type):
+    if mp_type.lower() == "gin":
+        nn = Sequential(Linear(emb_dim, 2*emb_dim), BatchNorm1d(2*emb_dim), activation, Linear(2*emb_dim, emb_dim))
+        return GINEConv(nn = nn)
+    elif mp_type.lower() == "gcn":
+        return GCNConv(emb_dim=emb_dim, activation=activation)
+    elif mp_type.lower() == "gat":
+        mp_layer = GATv2Conv(in_channels=emb_dim, out_channels=emb_dim, edge_dim=emb_dim, heads=3, concat=False)
+        nn = Sequential(Linear(emb_dim, 2*emb_dim), BatchNorm1d(2*emb_dim), activation, Linear(2*emb_dim, emb_dim))
+        return ConvWrapper(conv=mp_layer, nn=nn)
+    raise Exception("Unknown message passing type")    
+    
 class MPNN(torch.nn.Module):
 
     def __init__(self, num_classes, num_tasks, num_layer, emb_dim, 
                     gnn_type, residual, drop_ratio , JK, graph_pooling,
-                    node_encoder, edge_encoder, num_mlp_layers, activation):
-        '''
-            
-        '''
+                    node_encoder, edge_encoder, num_mlp_layers, activation, only_node_emb = False):
+        """
+        Message passing graph neural network.
+        """
         super(MPNN, self).__init__()
         
         self.num_classes = num_classes
@@ -25,6 +37,7 @@ class MPNN(torch.nn.Module):
         self.node_encoder = node_encoder
         self.edge_encoder = edge_encoder
         self.activation = get_activation(activation)
+        self.only_node_emb = only_node_emb
         
         assert self.num_layer >= 1
         
@@ -36,27 +49,17 @@ class MPNN(torch.nn.Module):
         self.dropout = Dropout(p=drop_ratio)
         for _ in range(self.num_layer):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
-            if gnn_type.lower() == "gin":
-                nn = Sequential(Linear(emb_dim, 2*emb_dim), BatchNorm1d(2*emb_dim), self.activation, Linear(2*emb_dim, emb_dim))
-                self.mp_layers.append(GINEConv(nn = nn))
-            elif gnn_type.lower() == "gcn":
-                self.mp_layers.append(GCNConv(emb_dim=emb_dim, activation=self.activation))
-            elif gnn_type.lower() == "gat":
-                mp_layer = GATv2Conv(in_channels=emb_dim, out_channels=emb_dim, edge_dim=emb_dim, heads=3, concat=False)
-                nn = Sequential(Linear(emb_dim, 2*emb_dim), BatchNorm1d(2*emb_dim), self.activation, Linear(2*emb_dim, emb_dim))
-                self.mp_layers.append(ConvWrapper(conv=mp_layer, nn=nn))
-            else:
-                raise NotImplementedError
-
-        print(f"Graph pooling function: {graph_pooling}")
-        self.pool = get_pooling_fct(graph_pooling)
-
-        self.mlp = get_mlp(num_layers=num_mlp_layers, 
-                           in_dim=self.emb_dim, 
-                           out_dim=self.num_classes*self.num_tasks, 
-                           hidden_dim=self.emb_dim // 2, 
-                           activation=self.activation, 
-                           dropout_rate=drop_ratio)
+            self.mp_layers.append(get_mp_layer(emb_dim, self.activation, gnn_type))
+            
+        if not only_node_emb:
+            print(f"Graph pooling function: {graph_pooling}")
+            self.pool = get_pooling_fct(graph_pooling)
+            self.mlp = get_mlp(num_layers=num_mlp_layers, 
+                            in_dim=self.emb_dim, 
+                            out_dim=self.num_classes*self.num_tasks, 
+                            hidden_dim=self.emb_dim // 2, 
+                            activation=self.activation, 
+                            dropout_rate=drop_ratio)
 
     def forward(self, batched_data):
         x, edge_index, edge_attr, batch = batched_data.x, batched_data.edge_index, batched_data.edge_attr, batched_data.batch
@@ -80,6 +83,10 @@ class MPNN(torch.nn.Module):
         
         # Todo: jumping knowledge
         h_node = h_list[-1]
+        
+        if self.only_node_emb:
+            return h_node
+        
         h_graph = self.pool(h_node, batched_data.batch)
 
         # Final MLP for predictions
@@ -96,7 +103,6 @@ class ConvWrapper(torch.nn.Module):
     """
     Wrapper to combine a convolutional message passing layers with few neurons (e.g. GAT) together with larger MLPs
     """
-    
     def __init__(self, conv, nn):
         super(ConvWrapper, self).__init__()
         self.conv = conv
@@ -134,6 +140,3 @@ class GCNConv(MessagePassing):
 
     def update(self, aggr_out):
         return aggr_out
-
-if __name__ == '__main__':
-    MPNN(num_tasks = 10)

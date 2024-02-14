@@ -9,20 +9,30 @@ from torch_geometric.utils import to_undirected
 from torch_geometric.transforms import ToUndirected, Compose, OneHotDegree
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
-from ogb.utils.features import get_atom_feature_dims
+from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 
-from Models.mpnn import MPNN
+from Models.mpnn import MPNN, get_mp_layer
 from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
 from Models.mlp import MLP
+from Models.utils import get_activation
 from Misc.drop_features import DropFeatures
 from Misc.add_zero_edge_attr import AddZeroEdgeAttr
 from Misc.pad_node_attr import PadNodeAttr
 from Misc.cosine_scheduler import get_cosine_schedule_with_warmup
 from Misc.select_only_one_target import SelectOnlyOneTarget
 
+# ESAN
+from Models.ESAN.preprocessing import policy2transform
+from Models.ESAN.models import DSnetwork, DSSnetwork
+
 def get_transform(args):
     transforms = []
     dataset_name_lowercase = args.dataset.lower()
+    
+    if args.model in ["DSS", "DS"]:
+        esan_transform = policy2transform(args.policy, args.num_hops)
+        transforms.append(esan_transform)
+    
     if dataset_name_lowercase == "csl":
         transforms.append(OneHotDegree(5))
         
@@ -95,32 +105,44 @@ def load_dataset(args, config):
     else:
         raise NotImplementedError("Unknown dataset")
         
-    train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
-    test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
+    # This can probably be written more elegantly
+    if args.model.lower() in ["dss", "ds"]:
+        train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True, follow_batch=['subgraph_idx'])
+        val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False, follow_batch=['subgraph_idx'])
+        test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False, follow_batch=['subgraph_idx'])
+    else:
+        train_loader = DataLoader(datasets[0], batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(datasets[1], batch_size=args.batch_size, shuffle=False)
+        test_loader = DataLoader(datasets[2], batch_size=args.batch_size, shuffle=False)
+        
     return train_loader, val_loader, test_loader
 
 def get_model(args, num_classes, num_vertex_features, num_tasks):
-    node_feature_dims = []
+    node_feature_dims, edge_feature_dims = [], []
     model = args.model.lower()
     dataset_name = args.dataset.lower()
 
     # Load node and edge encoder
+    if args.model.lower() in ["dss", "ds"] and args.policy == "ego_nets_plus":
+        node_feature_dims += [2,2]
+        
     if dataset_name == "zinc"and not args.do_drop_feat:
         node_feature_dims.append(21)
-        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
-        edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[4])
+        edge_feature_dims.append(4)
     elif dataset_name in ["peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
         node_feature_dims += get_atom_feature_dims()
-        node_encoder, edge_encoder = NodeEncoder(args.emb_dim, feature_dims=node_feature_dims), EdgeEncoder(args.emb_dim)
+        edge_feature_dims += get_bond_feature_dims()
     elif "qm9" in dataset_name:
         node_feature_dims += [2, 2, 2, 2, 2, 10, 1, 1, 1, 1, 5]
-        edge_feature_dims = [2, 2, 2, 1]
+        edge_feature_dims += [2, 2, 2, 1]
+         
+    if "qm9" in dataset_name or dataset_name in ["zinc", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
         edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
-            
+        
+        
     # Load model
     if model in ["gin", "gcn", "gat"]:  
         return MPNN(num_classes, 
@@ -136,7 +158,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                     num_mlp_layers = args.num_mlp_layers, 
                     residual=args.use_residual, 
                     activation=args.activation)
-    elif args.model.lower() == "mlp":
+    elif model == "mlp":
             return MLP(num_node_level_layers = args.num_n_layers,
                        num_graph_level_layers = args.num_g_layers,
                        node_encoder = node_encoder, 
@@ -146,6 +168,38 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                        dropout_rate = args.drop_out, 
                        graph_pooling = args.pooling, 
                        activation = args.activation)
+    elif model == "dss":
+        return DSSnetwork(num_layers = args.num_mp_layers, 
+                          in_dim = args.emb_dim, 
+                          emb_dim = args.emb_dim, 
+                          num_tasks = num_tasks, 
+                          feature_encoder = node_encoder,
+                          edge_encoder = edge_encoder,
+                          GNNConv = lambda x: get_mp_layer(emb_dim = x, 
+                                                           activation=get_activation(args.activation), 
+                                                           mp_type=args.mp))
+    elif model == "ds":
+        subgraph_gnn = MPNN(None, 
+                            None, 
+                            num_layer = args.num_mp_layers, 
+                            emb_dim = args.emb_dim, 
+                            gnn_type = args.mp, 
+                            drop_ratio = args.drop_out, 
+                            JK = "last", 
+                            graph_pooling = None, 
+                            edge_encoder=edge_encoder, 
+                            node_encoder=node_encoder, 
+                            num_mlp_layers = None, 
+                            residual=args.use_residual, 
+                            activation=args.activation,
+                            only_node_emb=True)
+        
+        channels = list(map(lambda x: int(x), args.channels.split('-')))
+        return DSnetwork(subgraph_gnn=subgraph_gnn, 
+                         subgraph_gnn_out_dim=args.emb_dim, 
+                         channels=channels, num_tasks=num_tasks, 
+                         invariant=args.use_invariant, 
+                         subgraph_pool= args.pooling)
     else: 
         raise ValueError("Unknown model name")
 

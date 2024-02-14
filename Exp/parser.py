@@ -72,6 +72,23 @@ def add_model_arguments(parser, model):
                         help='Number of fully connected layers that are applied to each node (default: 5)')
         parser.add_argument('--num_g_layers', type=int, default=5,
                         help='Number of fully connected layers that are applied to the whole graph (default: 5)')
+        
+    elif model in ["DSS", "DS"]:
+        parser.add_argument('--num_mp_layers', type=int, default=5,
+                        help='Number of message passing layers (default: 5) ')
+        parser.add_argument('--policy', type=str, default="ego_nets",
+                        help='Which policy to use (default: ego_nets, alternatives: edge_deleted, node_deleted, ego_nets_plus).')
+        parser.add_argument('--mp', type=str, default='GIN',
+                    help='GNN layer to use for message passing (default: GIN; other options: GCN)')
+        parser.add_argument('--num_hops', type=int, default=3,
+                        help='(For ego_nets and ego_nets_plus policy) Number of hops for the k-hop neighborhood (default: 3) ')
+        if model == "DS":
+            parser.add_argument('--invariant', type=int, default=0,
+                            help='(default: 0)')
+            parser.add_argument('--residual', type=int, default=0,
+                            help='Set 1 for a residual connection in MPNNs (default: 0)')
+            parser.add_argument('--channels', type=str, default='64-64',
+                                help='(default: 64-64)')
     else:
         raise NotImplementedError
 
@@ -119,7 +136,7 @@ def add_scheduler_args(parser, scheduler):
         parser.add_argument('--warmup_steps', type=int, default=0,
                             help='(For Cosine scheduler) Number of epochs with linear warmup (default: 0)')
 
-args_with_use = ["tracking", "residual"]
+args_with_use = ["tracking", "residual", "invariant"]
 args_with_do = ["drop_feat"]
 def int_to_bool_args(args):
     """
