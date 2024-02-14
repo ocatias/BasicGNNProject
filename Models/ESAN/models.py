@@ -151,27 +151,3 @@ class DSSnetwork(torch.nn.Module):
         h_graph = torch_scatter.scatter(src=h_subgraph, index=batched_data.subgraph_idx_batch, dim=0, reduce="mean")
 
         return self.final_layers(h_graph)
-
-
-class EgoEncoder(torch.nn.Module):
-    def __init__(self, encoder):
-        super(EgoEncoder, self).__init__()
-        self.num_added = 2
-        self.enc = encoder
-
-    def forward(self, x):
-        return torch.hstack((x[:, :self.num_added], self.enc(x[:, self.num_added:])))
-
-
-class ZincAtomEncoder(torch.nn.Module):
-    def __init__(self, policy, emb_dim):
-        super(ZincAtomEncoder, self).__init__()
-        self.policy = policy
-        self.num_added = 2
-        self.enc = torch.nn.Embedding(21, emb_dim)
-
-    def forward(self, x):
-        if self.policy == 'ego_nets_plus':
-            return torch.hstack((x[:, :self.num_added], self.enc(x[:, self.num_added:].squeeze())))
-        else:
-            return self.enc(x.squeeze())
