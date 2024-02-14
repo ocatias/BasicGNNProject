@@ -7,7 +7,6 @@ import torch.nn.functional as F
 import torch_scatter
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool, GlobalAttention
 
-from Models.ESAN.conv import GNN_node
 from Models.utils import get_pooling_fct
 
 def subgraph_pool(h_node, batched_data, pool):
