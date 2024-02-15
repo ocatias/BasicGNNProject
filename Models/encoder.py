@@ -53,6 +53,10 @@ class EdgeEncoder(torch.nn.Module):
             bond_embedding += self.bond_embedding_list[i](edge_attr[:,i])
 
         return bond_embedding   
+     
+"""
+From github.com/rampasek/GraphGPS (MIT License)
+"""
        
 VOC_node_input_dim = 14
 # VOC_edge_input_dim = 1 or 2; defined in class VOCEdgeEncoder
