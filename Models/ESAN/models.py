@@ -8,6 +8,7 @@ import torch_scatter
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool, GlobalAttention
 
 from Models.utils import get_pooling_fct
+from Misc.utils import PredictionType
 
 def subgraph_pool(h_node, batched_data, pool):
     # Represent each subgraph as the pool of its node representations
@@ -32,6 +33,8 @@ class DSnetwork(torch.nn.Module):
         self.invariant = invariant
         self.num_tasks = num_tasks
         self.subgraph_pool = get_pooling_fct(subgraph_pool)
+
+        # Todo: prediction_type
         
         fc_list = []
         fc_sum_list = []
@@ -148,5 +151,4 @@ class DSSnetwork(torch.nn.Module):
         # aggregate to obtain a representation of the graph given the representations of the subgraphs
 
         h_graph = torch_scatter.scatter(src=h_subgraph, index=batched_data.subgraph_idx_batch, dim=0, reduce="mean")
-
         return self.final_layers(h_graph)

@@ -1,3 +1,5 @@
+from enum import Enum
+
 def edge_tensor_to_list(edge_tensor):
     edge_list = []
     for i in range(edge_tensor.shape[1]):
@@ -27,3 +29,8 @@ def transform_dict_to_args_list(dictionary):
     for key,value in dictionary.items():
         list_args += [key, str(value)]
     return list_args
+
+class PredictionType(Enum):
+    GRAPH_PREDICTION = 1
+    NODE_EMBEDDING = 2
+    NODE_PREDICTION = 3

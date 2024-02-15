@@ -6,8 +6,6 @@ from sklearn.metrics import average_precision_score
 
 from Exp.preparation import get_evaluator
 
-
-
 def get_tracking_dict():
     return {"correct_classifications": 0, "y_preds":[], "y_true":[],  "total_loss":0, "batch_losses":[]}
 
@@ -40,7 +38,10 @@ def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dic
     if metric in ['accuracy']:
         loss = loss_fn(predictions, y)  
     else:
-        loss = loss_fn(predictions[is_labeled], y.float()[is_labeled])
+        if is_labeled.shape == predictions.shape:
+            loss = loss_fn(predictions[is_labeled], y.float()[is_labeled])
+        else:
+            loss = loss_fn(predictions, y)
     if metric == 'accuracy':
         tracking_dict["correct_classifications"] += torch.sum(predictions.argmax(dim=1)== y.argmax(dim=1)).item()
 
@@ -100,6 +101,12 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
             ap_list.append(ap)
         ap =  sum(ap_list)/len(ap_list)
         output_dict["ap"] = float(ap)
+    elif metric == 'f1':
+        y_preds = torch.stack(tracking_dict["y_preds"])
+        y_preds = torch.argmax(y_preds, 1)
+        y_target = torch.concat(tracking_dict['y_true'])      
+        f1 = metric_method(y_preds, y_target)
+        output_dict["f1"] = float(f1)
     else:
         raise Exception("Unknown metric name")
     

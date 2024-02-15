@@ -5,6 +5,7 @@ from torch.nn import Linear, ReLU, ModuleList, Sequential, BatchNorm1d, Dropout
 import torch.nn.functional as F
 
 from Models.utils import get_pooling_fct, get_activation, get_mlp
+from Misc.utils import PredictionType
 
 def get_mp_layer(emb_dim, activation, mp_type):
     if mp_type.lower() == "gin":
@@ -22,7 +23,7 @@ class MPNN(torch.nn.Module):
 
     def __init__(self, num_classes, num_tasks, num_layer, emb_dim, 
                     gnn_type, residual, drop_ratio , JK, graph_pooling,
-                    node_encoder, edge_encoder, num_mlp_layers, activation, only_node_emb = False):
+                    node_encoder, edge_encoder, num_mlp_layers, activation, prediction_type):
         """
         Message passing graph neural network.
         """
@@ -37,7 +38,7 @@ class MPNN(torch.nn.Module):
         self.node_encoder = node_encoder
         self.edge_encoder = edge_encoder
         self.activation = get_activation(activation)
-        self.only_node_emb = only_node_emb
+        self.prediction_type = prediction_type
         
         assert self.num_layer >= 1
         
@@ -51,7 +52,7 @@ class MPNN(torch.nn.Module):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
             self.mp_layers.append(get_mp_layer(emb_dim, self.activation, gnn_type))
             
-        if not only_node_emb:
+        if prediction_type != PredictionType.NODE_EMBEDDING:
             print(f"Graph pooling function: {graph_pooling}")
             self.pool = get_pooling_fct(graph_pooling)
             self.mlp = get_mlp(num_layers=num_mlp_layers, 
@@ -84,13 +85,16 @@ class MPNN(torch.nn.Module):
         # Todo: jumping knowledge
         h_node = h_list[-1]
         
-        if self.only_node_emb:
+        # Return raw embedding
+        if self.prediction_type == PredictionType.NODE_EMBEDDING:
             return h_node
         
-        h_graph = self.pool(h_node, batched_data.batch)
-
-        # Final MLP for predictions
-        prediction = self.mlp(h_graph)
+        # Return prediction
+        elif self.prediction_type == PredictionType.NODE_PREDICTION:
+            prediction = self.mlp(h_node)
+        else:
+            h_graph = self.pool(h_node, batched_data.batch)
+            prediction = self.mlp(h_graph)
 
         # Reshape prediction to fit task
         if self.num_tasks == 1:

@@ -10,9 +10,10 @@ from torch_geometric.transforms import ToUndirected, Compose, OneHotDegree
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from ogb.graphproppred.mol_encoder import AtomEncoder
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
+from torchmetrics import F1Score 
 
 from Models.mpnn import MPNN, get_mp_layer
-from Models.encoder import NodeEncoder, EdgeEncoder, ZincAtomEncoder, EgoEncoder
+from Models.encoder import NodeEncoder, EdgeEncoder, VOCNodeEncoder, VOCEdgeEncoder
 from Models.mlp import MLP
 from Models.utils import get_activation
 from Misc.drop_features import DropFeatures
@@ -20,10 +21,17 @@ from Misc.add_zero_edge_attr import AddZeroEdgeAttr
 from Misc.pad_node_attr import PadNodeAttr
 from Misc.cosine_scheduler import get_cosine_schedule_with_warmup
 from Misc.select_only_one_target import SelectOnlyOneTarget
+from Misc.weighted_cross_entropy_loss import weighted_cross_entropy
+from Misc.utils import PredictionType
 
 # ESAN
 from Models.ESAN.preprocessing import policy2transform
 from Models.ESAN.models import DSnetwork, DSSnetwork
+
+def get_prediction_type(dataset_name_lower):
+    if dataset_name_lower == "pascalvoc-sp":
+        return PredictionType.NODE_PREDICTION
+    return PredictionType.GRAPH_PREDICTION
 
 def get_transform(args):
     transforms = []
@@ -92,8 +100,8 @@ def load_dataset(args, config):
         datasets = [LRGBDataset(root=dir, name='Peptides-func', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
     elif dataset_name == "peptides-struct":
         datasets = [LRGBDataset(root=dir, name='Peptides-struct', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
-    # elif dataset_name == "pascalvoc-sp":
-    #     datasets = [LRGBDataset(root=dir, name='PascalVOC-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
+    elif dataset_name == "pascalvoc-sp":
+        datasets = [LRGBDataset(root=dir, name='PascalVOC-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
     # elif dataset_name == "coco-sp":
     #     datasets = [LRGBDataset(root=dir, name='COCO-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
     # elif dataset_name == "pcqm-contact":
@@ -140,6 +148,8 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     if "qm9" in dataset_name or dataset_name in ["zinc", "zinc_full", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
         edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
+    elif dataset_name == "pascalvoc-sp":
+        node_encoder, edge_encoder = VOCNodeEncoder(emb_dim = args.emb_dim), VOCEdgeEncoder(emb_dim = args.emb_dim)
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
         
@@ -158,7 +168,8 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                     node_encoder=node_encoder, 
                     num_mlp_layers = args.num_mlp_layers, 
                     residual=args.use_residual, 
-                    activation=args.activation)
+                    activation=args.activation,
+                    prediction_type=get_prediction_type(dataset_name))
     elif model == "mlp":
             return MLP(num_node_level_layers = args.num_n_layers,
                        num_graph_level_layers = args.num_g_layers,
@@ -168,8 +179,11 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                        num_tasks = num_tasks, 
                        dropout_rate = args.drop_out, 
                        graph_pooling = args.pooling, 
-                       activation = args.activation)
+                       activation = args.activation,
+                       prediction_type=get_prediction_type(dataset_name))
     elif model == "dss":
+        assert get_prediction_type(dataset_name) == PredictionType.GRAPH_PREDICTION
+        
         return DSSnetwork(num_layers = args.num_mp_layers, 
                           in_dim = args.emb_dim, 
                           emb_dim = args.emb_dim, 
@@ -180,6 +194,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                                                            activation=get_activation(args.activation), 
                                                            mp_type=args.mp))
     elif model == "ds":
+        assert get_prediction_type(dataset_name) == PredictionType.GRAPH_PREDICTION
         subgraph_gnn = MPNN(None, 
                             None, 
                             num_layer = args.num_mp_layers, 
@@ -193,7 +208,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                             num_mlp_layers = None, 
                             residual=args.use_residual, 
                             activation=args.activation,
-                            only_node_emb=True)
+                            prediction_type=PredictionType.NODE_EMBEDDING)
         
         channels = list(map(lambda x: int(x), args.channels.split('-')))
         return DSnetwork(subgraph_gnn=subgraph_gnn, 
@@ -261,6 +276,10 @@ def get_loss(dataset_name):
     elif dataset_name == "peptides-func":
         loss = torch.nn.BCEWithLogitsLoss()
         metric = "ap" 
+    elif dataset_name_lowercase == "pascalvoc-sp":
+        loss = weighted_cross_entropy
+        metric = "f1" 
+        metric_method = F1Score(task="multiclass", num_classes=21, average='macro')
     else:
         raise NotImplementedError("No loss for this dataset")
     
