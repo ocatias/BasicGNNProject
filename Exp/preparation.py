@@ -307,6 +307,9 @@ def mrr_fct(y_pred_pos, y_pred_neg):
         optimistic_rank.append(sum(y_pred_neg > a))
         pessimistic_rank.append(sum(y_pred_neg >= a))
         
+    optimistic_rank = torch.Tensor(optimistic_rank)
+    pessimistic_rank = torch.Tensor(pessimistic_rank) 
+    
     # pessimistic rank: "how many negatives have at least the positive score?"
     # ~> the positive is ranked last among those with equal score
     # pessimistic_rank = (y_pred_neg >= y_pred_pos).sum(dim=1)
