@@ -1,31 +1,30 @@
 import torch
-import wandb
-from ogb.graphproppred import Evaluator
 import torch.nn.functional as F
 from sklearn.metrics import average_precision_score
 
-from Exp.preparation import get_evaluator
+from Misc.utils import PredictionType
 
 def get_tracking_dict():
     return {"correct_classifications": 0, "y_preds":[], "y_true":[],  "total_loss":0, "batch_losses":[]}
 
-def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dict):
-    batch_size = batch.y.shape[0]
-
-    # I think this was only necessary for ogbg-molpcba + CRE:
-    # batch.edge_index = batch.edge_index.long()
-
+def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dict, prediction_type):  
     if batch.edge_attr is not None and len(batch.edge_attr.shape) == 1:
         batch.edge_attr = batch.edge_attr.view(-1, 1)
 
     batch = batch.to(device)
     predictions = model(batch)
-    y = batch.y
+    
+    if prediction_type == PredictionType.EDGE_PREDICTION:
+        y = batch.edge_label
+    else:
+        y = batch.y
+        
+    nr_predictions =  y.shape[0]
 
     if model.num_tasks == 1:
-        y = y.view(batch_size, -1)
+        y = y.view(nr_predictions, -1)
     else:
-        y = y.view(batch_size, model.num_tasks)
+        y = y.view(nr_predictions, model.num_tasks)
 
     if y.shape[1] == 1 and metric == "accuracy":
         y = F.one_hot(torch.squeeze(y, 1), 10)
@@ -34,21 +33,22 @@ def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dic
 
     if y.dtype == torch.int64:
         y = y.float()
+    ground_truth = y
 
     if metric in ['accuracy']:
-        loss = loss_fn(predictions, y)  
+        loss = loss_fn(predictions, ground_truth)  
     else:
         if is_labeled.shape == predictions.shape:
-            loss = loss_fn(predictions[is_labeled], y.float()[is_labeled])
+            loss = loss_fn(predictions[is_labeled], ground_truth.float()[is_labeled])
         else:
-            loss = loss_fn(predictions, y)
+            loss = loss_fn(predictions, ground_truth)
     if metric == 'accuracy':
-        tracking_dict["correct_classifications"] += torch.sum(predictions.argmax(dim=1)== y.argmax(dim=1)).item()
+        tracking_dict["correct_classifications"] += torch.sum(predictions.argmax(dim=1)==ground_truth.argmax(dim=1)).item()
 
     tracking_dict["y_preds"] += predictions.cpu()
-    tracking_dict["y_true"] += y.cpu()
+    tracking_dict["y_true"] += ground_truth.cpu()
     tracking_dict["batch_losses"].append(loss.item())
-    tracking_dict["total_loss"] += loss.item()*batch_size
+    tracking_dict["total_loss"] += loss.item()*nr_predictions
     return loss
 
 def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metric_method, train=False):
@@ -107,21 +107,33 @@ def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metr
         y_target = torch.concat(tracking_dict['y_true'])      
         f1 = metric_method(y_preds, y_target)
         output_dict["f1"] = float(f1)
+    elif metric == "mrr":
+        import numpy as np
+        y_preds = torch.concat(tracking_dict["y_preds"])
+        y_target = torch.concat(tracking_dict['y_true'])  
+        index = np.arange(y_target.shape[0])
+        y_pos_index = index[y_target == 1]
+        y_neg_index = index[y_target != 1]
+        y_pos = y_preds[y_pos_index]
+        y_neg = y_preds[y_neg_index]
+        mrr = metric_method(y_pos, y_neg)
+        output_dict["mrr"] = float(mrr)
+        
     else:
         raise Exception("Unknown metric name")
     
     return output_dict
 
-def train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method):
+def train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method, prediction_type):
     """
         Performs one training epoch, i.e. one optimization pass over the batches of a data loader.
     """
     model.train()
 
     tracking_dict = get_tracking_dict()
-    for step, batch in enumerate(train_loader):
+    for batch in train_loader:
         optimizer.zero_grad()
-        loss = compute_loss_predictions(batch, model, eval_name, device, loss_fct, tracking_dict)
+        loss = compute_loss_predictions(batch, model, eval_name, device, loss_fct, tracking_dict, prediction_type)
 
         loss.backward()
         optimizer.step()
@@ -131,16 +143,16 @@ def train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, 
             
     return compute_final_tracking_dict(tracking_dict, {}, train_loader, eval_name, metric_method=metric_method, train=True)
 
-def eval(model, device, loader, loss_fn, eval_name, metric_method):
+def eval(model, device, loader, loss_fn, eval_name, metric_method, prediction_type):
     """
         Evaluates a model over all the batches of a data loader.
     """
     model.eval()
 
     tracking_dict = get_tracking_dict()
-    for step, batch in enumerate(loader):
+    for batch in loader:
         with torch.no_grad():
-            compute_loss_predictions(batch, model, eval_name, device, loss_fn, tracking_dict)
+            compute_loss_predictions(batch, model, eval_name, device, loss_fn, tracking_dict, prediction_type)
 
     eval_dict = compute_final_tracking_dict(tracking_dict, {}, loader, eval_name, metric_method=metric_method)
     

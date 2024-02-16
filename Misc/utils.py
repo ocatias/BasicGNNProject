@@ -34,3 +34,4 @@ class PredictionType(Enum):
     GRAPH_PREDICTION = 1
     NODE_EMBEDDING = 2
     NODE_PREDICTION = 3
+    EDGE_PREDICTION = 4

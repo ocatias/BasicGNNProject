@@ -12,7 +12,7 @@ import numpy as np
 from Exp.parser import parse_args
 from Misc.config import config
 from Misc.utils import list_of_dictionary_to_dictionary_of_lists
-from Exp.preparation import load_dataset, get_model, get_optimizer_scheduler, get_loss
+from Exp.preparation import load_dataset, get_model, get_optimizer_scheduler, get_loss, get_prediction_type
 from Exp.training_loop_functions import train, eval, step_scheduler
 from Misc.tracking import get_tracker
 
@@ -46,12 +46,15 @@ def main(args):
     set_seed(args.seed)
     train_loader, val_loader, test_loader = load_dataset(args, config)
     num_classes, num_vertex_features = train_loader.dataset.num_classes, train_loader.dataset.num_node_features
+    prediction_type = get_prediction_type(args.dataset.lower())
     
-    if "qm9" in dataset_name.lower() and "_" in  dataset_name.lower():
+    if ("qm9" in dataset_name.lower() and "_" in  dataset_name.lower()) or \
+       (args.dataset.lower() in ["zinc", "zinc_full"] or "ogb" in args.dataset.lower()) or \
+        (args.dataset.lower() == "pcqm-contact"):
         num_classes = 1
+        
     
-    if args.dataset.lower() in ["zinc", "zinc_full"] or "ogb" in args.dataset.lower():
-        num_classes = 1
+
    
     try:
         num_tasks = train_loader.dataset.num_tasks
@@ -85,9 +88,9 @@ def main(args):
     train_results, val_results, test_results = [], [], []
     for epoch in range(1, args.epochs + 1):
         print(f"Epoch {epoch}")
-        train_result = train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method=metric_method)
-        val_result = eval(model, device, val_loader, loss_fct, eval_name, metric_method=metric_method)
-        test_result = eval(model, device, test_loader, loss_fct, eval_name, metric_method=metric_method)
+        train_result = train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method=metric_method, prediction_type=prediction_type)
+        val_result = eval(model, device, val_loader, loss_fct, eval_name, metric_method=metric_method, prediction_type=prediction_type)
+        test_result = eval(model, device, test_loader, loss_fct, eval_name, metric_method=metric_method, prediction_type=prediction_type)
 
         train_results.append(train_result)
         val_results.append(val_result)

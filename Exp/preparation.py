@@ -1,6 +1,7 @@
 import os
 import csv
 
+import numpy as np
 import torch
 from torch_geometric.loader import DataLoader
 from torch_geometric.datasets import ZINC, GNNBenchmarkDataset, GNNBenchmarkDataset, LRGBDataset, QM9
@@ -31,6 +32,8 @@ from Models.ESAN.models import DSnetwork, DSSnetwork
 def get_prediction_type(dataset_name_lower):
     if dataset_name_lower == "pascalvoc-sp":
         return PredictionType.NODE_PREDICTION
+    elif dataset_name_lower == "pcqm-contact":
+        return PredictionType.EDGE_PREDICTION
     return PredictionType.GRAPH_PREDICTION
 
 def get_transform(args):
@@ -104,8 +107,8 @@ def load_dataset(args, config):
         datasets = [LRGBDataset(root=dir, name='PascalVOC-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
     # elif dataset_name == "coco-sp":
     #     datasets = [LRGBDataset(root=dir, name='COCO-SP', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
-    # elif dataset_name == "pcqm-contact":
-    #     datasets = [LRGBDataset(root=dir, name='PCQM-Contact', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
+    elif dataset_name == "pcqm-contact":
+        datasets = [LRGBDataset(root=dir, name='PCQM-Contact', split=split, pre_transform=transform) for split in ["train", "val", "test"]]
         
     elif "qm9" in dataset_name:
         dataset = QM9(root=dir, pre_transform=transform)
@@ -138,14 +141,14 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     if "zinc" in dataset_name and not args.do_drop_feat:
         node_feature_dims.append(28)
         edge_feature_dims.append(4)
-    elif dataset_name in ["peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
+    elif dataset_name in ["pcqm-contact", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
         node_feature_dims += get_atom_feature_dims()
         edge_feature_dims += get_bond_feature_dims()
     elif "qm9" in dataset_name:
         node_feature_dims += [2, 2, 2, 2, 2, 10, 1, 1, 1, 1, 5]
         edge_feature_dims += [2, 2, 2, 1]
          
-    if "qm9" in dataset_name or dataset_name in ["zinc", "zinc_full", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
+    if "qm9" in dataset_name or dataset_name in ["pcqm-contact", "zinc", "zinc_full", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
         edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
     elif dataset_name == "pascalvoc-sp":
@@ -280,10 +283,40 @@ def get_loss(dataset_name):
         loss = weighted_cross_entropy
         metric = "f1" 
         metric_method = F1Score(task="multiclass", num_classes=21, average='macro')
+    elif dataset_name_lowercase == "pcqm-contact":
+        loss = torch.nn.CrossEntropyLoss()
+        metric = "mrr"
+        metric_method = mrr_fct
     else:
         raise NotImplementedError("No loss for this dataset")
     
     return {"loss": loss, "metric": metric, "metric_method": metric_method}
+
+def mrr_fct(y_pred_pos, y_pred_neg):
+    # calculate ranks
+    y_pred_pos = y_pred_pos.view(-1, 1)
+    # optimistic rank: "how many negatives have a larger score than the positive?"
+    # ~> the positive is ranked first among those with equal score
+    # optimistic_rank = (y_pred_neg > y_pred_pos).sum(dim=1)
+    
+    # Need to unroll it because I do not have enough RAM otherwise    
+    optimistic_rank = []
+    pessimistic_rank = []
+    
+    for i, a in enumerate(y_pred_pos.view(-1, 1)):
+        optimistic_rank.append(sum(y_pred_neg > a))
+        pessimistic_rank.append(sum(y_pred_neg >= a))
+        
+    # pessimistic rank: "how many negatives have at least the positive score?"
+    # ~> the positive is ranked last among those with equal score
+    # pessimistic_rank = (y_pred_neg >= y_pred_pos).sum(dim=1)
+    ranking_list = 0.5 * (optimistic_rank + pessimistic_rank) + 1
+    hits1_list = (ranking_list <= 1).to(torch.float)
+    hits3_list = (ranking_list <= 3).to(torch.float)
+    hits10_list = (ranking_list <= 10).to(torch.float)
+    mrr_list = 1./ranking_list.to(torch.float)
+    return float(mrr_list.mean().item())
+
 
 def get_evaluator(dataset):
     evaluator = Evaluator(dataset)

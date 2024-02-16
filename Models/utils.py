@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool, global_add_pool, global_max_pool
-from torch.nn import Identity, Dropout, BatchNorm1d, Sequential, Linear
+from torch.nn import Dropout, BatchNorm1d, Sequential, Linear
 
 def get_activation(activation):
     match activation:

@@ -52,7 +52,7 @@ class MPNN(torch.nn.Module):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
             self.mp_layers.append(get_mp_layer(emb_dim, self.activation, gnn_type))
             
-        if prediction_type != PredictionType.NODE_EMBEDDING:
+        if prediction_type in [PredictionType.NODE_PREDICTION, PredictionType.GRAPH_PREDICTION]:
             print(f"Graph pooling function: {graph_pooling}")
             self.pool = get_pooling_fct(graph_pooling)
             self.mlp = get_mlp(num_layers=num_mlp_layers, 
@@ -85,17 +85,21 @@ class MPNN(torch.nn.Module):
         # Todo: jumping knowledge
         h_node = h_list[-1]
         
-        # Return raw embedding
+       
         if self.prediction_type == PredictionType.NODE_EMBEDDING:
             return h_node
         
-        # Return prediction
         elif self.prediction_type == PredictionType.NODE_PREDICTION:
             prediction = self.mlp(h_node)
-        else:
+            
+        elif self.prediction_type == PredictionType.GRAPH_PREDICTION:
             h_graph = self.pool(h_node, batched_data.batch)
             prediction = self.mlp(h_graph)
-
+        
+        else: # PredictionType.EDGE_PREDICTION
+            h_edge_endpoints = h_node[batched_data.edge_label_index]
+            prediction = torch.sum(h_edge_endpoints[0,:,:] * h_edge_endpoints[1,:,:], dim=-1)
+            
         # Reshape prediction to fit task
         if self.num_tasks == 1:
             prediction = prediction.view(-1, self.num_classes)
