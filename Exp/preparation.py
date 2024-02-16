@@ -138,25 +138,25 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     if args.model.lower() in ["dss", "ds"] and args.policy == "ego_nets_plus":
         node_feature_dims += [2,2]
         
-    if "zinc" in dataset_name and not args.do_drop_feat:
-        node_feature_dims.append(28)
-        edge_feature_dims.append(4)
-    elif dataset_name in ["pcqm-contact", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"] and not args.do_drop_feat:
-        node_feature_dims += get_atom_feature_dims()
-        edge_feature_dims += get_bond_feature_dims()
-    elif "qm9" in dataset_name:
-        node_feature_dims += [2, 2, 2, 2, 2, 10, 1, 1, 1, 1, 5]
-        edge_feature_dims += [2, 2, 2, 1]
+    if not args.do_drop_feat and dataset_name != "csl":
+        if "zinc" in dataset_name:
+            node_feature_dims.append(28)
+            edge_feature_dims.append(4)
+        elif dataset_name in ["pcqm-contact", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
+            node_feature_dims += get_atom_feature_dims()
+            edge_feature_dims += get_bond_feature_dims()
+        elif "qm9" in dataset_name:
+            node_feature_dims += [2, 2, 2, 2, 2, 10, 1, 1, 1, 1, 5]
+            edge_feature_dims += [2, 2, 2, 1]
          
-    if "qm9" in dataset_name or dataset_name in ["pcqm-contact", "zinc", "zinc_full", "peptides-struct", "peptides-func", "ogbg-molhiv", "ogbg-molpcba", "ogbg-moltox21", "ogbg-molesol", "ogbg-molbace", "ogbg-molbbbp", "ogbg-molclintox", "ogbg-molmuv", "ogbg-molsider", "ogbg-moltoxcast", "ogbg-molfreesolv", "ogbg-mollipo"]:
-        node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
-        edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
-    elif dataset_name == "pascalvoc-sp":
-        node_encoder, edge_encoder = VOCNodeEncoder(emb_dim = args.emb_dim), VOCEdgeEncoder(emb_dim = args.emb_dim)
+        if dataset_name == "pascalvoc-sp":
+            node_encoder, edge_encoder = VOCNodeEncoder(emb_dim = args.emb_dim), VOCEdgeEncoder(emb_dim = args.emb_dim)
+        else:
+            node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=node_feature_dims)
+            edge_encoder =  EdgeEncoder(emb_dim=args.emb_dim, feature_dims=edge_feature_dims)
     else:
         node_encoder, edge_encoder = lambda x: x, lambda x: x
-        
-        
+             
     # Load model
     if model in ["gin", "gcn", "gat"]:  
         return MPNN(num_classes, 
