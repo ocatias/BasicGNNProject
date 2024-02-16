@@ -1,47 +1,46 @@
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import global_mean_pool, global_add_pool
-from torch.nn import BatchNorm1d as BN, LayerNorm as LN, Identity
+from torch_geometric.nn import global_mean_pool, global_add_pool, global_max_pool
+from torch.nn import Dropout, BatchNorm1d, Sequential, Linear
 
+def get_activation(activation):
+    match activation:
+        case 'relu':
+            return torch.nn.ReLU()
+        case 'elu':
+            return torch.nn.ELU()
+        case 'id':
+            return torch.nn.Identity()
+        case 'sigmoid':
+            return torch.nn.Sigmoid()
+        case 'tanh':
+            return torch.nn.Tanh()
+        case 'gelu':
+            return torch.nn.GELU()
+        case _:
+            raise NotImplementedError(f"Activation {activation} not implemented")
 
-def get_nonlinearity(nonlinearity, return_module=True):
-    if nonlinearity == 'relu':
-        module = torch.nn.ReLU
-        function = F.relu
-    elif nonlinearity == 'elu':
-        module = torch.nn.ELU
-        function = F.elu
-    elif nonlinearity == 'id':
-        module = torch.nn.Identity
-        function = lambda x: x
-    elif nonlinearity == 'sigmoid':
-        module = torch.nn.Sigmoid
-        function = F.sigmoid
-    elif nonlinearity == 'tanh':
-        module = torch.nn.Tanh
-        function = torch.tanh
-    else:
-        raise NotImplementedError('Nonlinearity {} is not currently supported.'.format(nonlinearity))
-    if return_module:
-        return module
-    return function
-
-
-def get_pooling_fn(readout):
-    if readout == 'sum':
+def get_pooling_fct(readout):    
+    if readout == "sum":
         return global_add_pool
-    elif readout == 'mean':
+    elif readout == "mean":
         return global_mean_pool
+    elif readout == "max":
+        return global_max_pool
     else:
-        raise NotImplementedError('Readout {} is not currently supported.'.format(readout))
+        raise NotImplementedError(f"Readout {readout} is not currently supported.")
 
+def get_mlp(num_layers, in_dim, out_dim, hidden_dim, activation, dropout_rate):
+    layers = []
+    for i in range(num_layers):
+        in_size = hidden_dim if i > 0 else in_dim
+        out_size = hidden_dim if i < num_layers - 1 else out_dim
 
-def get_graph_norm(norm):
-    if norm == 'bn':
-        return BN
-    elif norm == 'ln':
-        return LN
-    elif norm == 'id':
-        return Identity
-    else:
-        raise ValueError(f'Graph Normalisation {norm} not currently supported')
+        layers.append(Linear(in_size, out_size))
+        layers.append(BatchNorm1d(out_size))
+                    
+        if num_layers > 0 and i < num_layers - 1:
+            layers.append(Dropout(p=dropout_rate))
+            layers.append(activation)
+            
+    return Sequential(*layers)

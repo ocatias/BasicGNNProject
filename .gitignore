@@ -1,7 +1,7 @@
-datasets/
-!datasets/splits/
+Data/Datasets/
 wandb/
 Results/
+Tracking/
 !Results/.gitignore
 
 

@@ -1,5 +1,7 @@
 # BasicGNNProject
-This repository is meant as a starting point for working on your own GNN research projects. This code allows you to tune, train and evaluate basic models (MLP, GCN and GIN) on some well known graph datasets (`ZINC`, `CSL`, and OGB datasets). Some projects based on repository are: 
+This repository is meant as a starting point for your own GNN research projects. This code allows you to tune, train and evaluate basic models on well known graph datasets. 
+
+Projects based on this repository:
 - _Expressivity-Preserving GNN Simulation_, NeurIPS, 2023: [paper](https://openreview.net/forum?id=ytTfonl9Wd), [code](https://github.com/ocatias/GNN-Simulation)
 - _Expectation-Complete Graph Representations with Homomorphisms_, ICML, 2023: [paper](https://openreview.net/forum?id=ppgRPC14uI), [code](https://github.com/ocatias/HomCountGNNs)
 - _Weisfeiler and Leman Return with Graph Transformations_, MLG@ECMLPKDD, 2022: [paper](https://openreview.net/pdf?id=Oq5mzL-3SUV), [code](https://github.com/ocatias/WL_Return)
@@ -7,7 +9,23 @@ This repository is meant as a starting point for working on your own GNN researc
 
 If you find this repository helpful please give it a :star:.
 
+## Supported Models and Datasets
+
+**Models:**
+- Message Pasing Graph Neural Networks: `GIN`, `GCN`, `GAT`
+- Equivariant Subgraph Aggregation Networks: `DS`, `DSS`
+- Multilayer perceptron that ignores the graph structure: `MLP`
+
+**Datasets:**
+- `ZINC` 
+- `CSL`: please use cross validation for this dataset
+- OGB datasets: `ogbg-molhiv`, `ogbg-moltox21`, `ogbg-molesol`, `ogbg-molbace`, `ogbg-molclintox`, `ogbg-molbbbp`, `ogbg-molsider`, `ogbg-moltoxcast`, `ogbg-mollipo`
+- Long Range Graph Benchmark datasets: `Peptides-struct`, `Peptides-func`, `PascalVOC-SP`
+- QM9: `QM9` or `QM9_i` if you only want to predict the i-th property
+
+
 ## Setup
+
 Clone this repository and open the directory
 ```
 git clone https://github.com/ocatias/BasicGNNProject
@@ -37,8 +55,7 @@ pip install -r requirements.txt
 ```
 
 ### Tracking
-Training and different experiments are tracked via [wandb](https://wandb.ai/). If you want to make use of the tracking you need a wandb account. The first time you train a model, you will be prompted to enter you wandb API key. If you want to disable tracking you can do this in the config `Configs/config.yaml`.
-
+Per default, experiments are tracked tracked via [wandb](https://wandb.ai/). This can be disabled in `Configs/config.yaml`. If you want to make use of this tracking you need a wandb account. The first time you train a model, you will be prompted to enter you wandb API key. If you want to disable tracking you can do this in the config `Configs/config.yaml`.
 
 ## How to Train a GNN
 
@@ -67,120 +84,27 @@ wandb sweep Configs/WandB_Grids/example_grid.yaml
 ```
 This command will tell you the command needed to join agents to the sweep. You can even join agents on different computers to the same sweep! Sweeps can also be initialized purely from scripts. More details on sweeps be found [here](https://wandb.ai/site/sweeps).
 
-## Supported Models and Datasets
 
-**Models:** GIN, GCN and MLP. MLP pools all vertex features and then passes the resulting vector through an MLP.
-
-**Datasets:**
-- `ZINC` 
-- `CSL`: please use cross validation for this dataset
-- OGB datasets: `ogbg-molhiv`, `ogbg-moltox21`, `ogbg-molesol`, `ogbg-molbace`, `ogbg-molclintox`, `ogbg-molbbbp`, `ogbg-molsider`, `ogbg-moltoxcast`, `ogbg-mollipo`
 
 ## Testing
 
-The integration tests can be executed with
+To run integration tests
 ```
 python -m unittest
 ```
 
 ## Citations
+**Models**
+- GIN: _How Powerful are Graph Neural Networks?_; Xu et al.; ICLR 2019
+- GCN: _Semi-Supervised Classification with Graph Convolutional Networks_; Kipf and Welling; ICLR 2017
+- GAT: _Graph Attention Networks_; Veličković at al.;  ICLR 2018
+- DS and DSS: _Equivariant Subgraph Aggregation Networks_; Bevilacqua et al.; ICLR 2022
 
-### Code
-```
-@inproceedings{neurips-bodnar2021b,
-title={Weisfeiler and Lehman Go Cellular: CW Networks},
-author={Bodnar, Cristian and Frasca, Fabrizio and Otter, Nina and Wang, Yu Guang and Li{\`o}, Pietro and Mont{\'u}far, Guido and Bronstein, Michael},
-booktitle = {Advances in Neural Information Processing Systems},
-year={2021}
-}
-```
 
-```
-@inproceedings{
-xu2018how,
-title={How Powerful are Graph Neural Networks?},
-author={Keyulu Xu and Weihua Hu and Jure Leskovec and Stefanie Jegelka},
-booktitle={International Conference on Learning Representations},
-year={2019}
-}
-```
-
-```
-@inproceedings{ogb,
-author = {Hu, Weihua and Fey, Matthias and Zitnik, Marinka and Dong, Yuxiao and Ren, Hongyu and Liu, Bowen and Catasta, Michele and Leskovec, Jure},
-booktitle = {NeurIPS},
-title = {{Open Graph Benchmark}: Datasets for Machine Learning on Graphs},
-year = {2020}
-}
-```
-
-### Models
-GCN
-```
-@inproceedings{GCN,
-author    = {Thomas N. Kipf and Max Welling},
-title     = {Semi-Supervised Classification with Graph Convolutional Networks},
-year      = {2017},
-booktitle = {ICLR}
-}
-```
-
-GIN
-```
-@inproceedings{
-xu2018how,
-title={How Powerful are Graph Neural Networks?},
-author={Keyulu Xu and Weihua Hu and Jure Leskovec and Stefanie Jegelka},
-booktitle={ICLR},
-year={2019}
-}
-```
-
-### Datasets
-ZINC
-```
-@article{ZINC1,
-author = {Gómez-Bombarelli, Rafael and Wei, Jennifer N. and Duvenaud, David and Hernández-Lobato, José Miguel and Sánchez-Lengeling, Benjamín and Sheberla, Dennis and Aguilera-Iparraguirre, Jorge and Hirzel, Timothy D. and Adams, Ryan P. and Aspuru-Guzik, Alán},
-title = {Automatic Chemical Design Using a Data-Driven Continuous Representation of Molecules},
-journal = {ACS Central Science},
-year = {2018},
-}
-```
-
-```
-@article{ZINC2,
-author = {Sterling, Teague and Irwin, John J.},
-title = {ZINC 15 – Ligand Discovery for Everyone},
-journal = {Journal of Chemical Information and Modeling},
-year = {2015},
-}
-```
-
-CSL
-```
-@inproceedings{relational_pooling,
-title = {Relational {Pooling} for {Graph} {Representations}},
-author = {Murphy, Ryan L and Srinivasan, Balasubramaniam and Rao, Vinayak and Ribeiro, Bruno},
-year = {2019},
-booktitle = {ICML}
-}
-```
-
-```
-@article{Benchmarking-GNNs,
-title={Benchmarking Graph Neural Networks},
-author={Dwivedi, Vijay Prakash and Joshi, Chaitanya K and Laurent, Thomas and Bengio, Yoshua and Bresson, Xavier},
-journal={arXiv preprint arXiv:2003.00982},
-year={2020}
-}
-```
-
-OGB
-```
-@inproceedings{ogb,
-author = {Hu, Weihua and Fey, Matthias and Zitnik, Marinka and Dong, Yuxiao and Ren, Hongyu and Liu, Bowen and Catasta, Michele and Leskovec, Jure},
-booktitle = {NeurIPS},
-title = {{Open Graph Benchmark}: Datasets for Machine Learning on Graphs},
-year = {2020}
-}
-```
+**Datasets**
+- ZINC: _Automatic Chemical Design Using a Data-Driven Continuous Representation of Molecules_; Gómez-Bombarelli et al.; ACS Central Science 2018
+- ZINC: _ZINC 15 – Ligand Discovery for Everyone_; Sterling and Irwin; Journal of Chemical Information and Modeling 2018
+- CSL: _Relational Pooling for Graph Representations_; Murphy et al.; ICML 2019
+- OGB: _Open Graph Benchmark: Datasets for Machine Learning on Graph_; Hu et al.; NeurIPS 2020
+- Long Range Graph Benchmark: _Long Range Graph Benchmark_; Dwivedi et al.; NeurIPS 2022
+- QM9: _MoleculeNet: A Benchmark for Molecular Machine Learning_; Wu et al.; Chemical Science 2018

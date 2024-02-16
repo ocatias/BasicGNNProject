@@ -6,23 +6,23 @@ import random
 import time 
 import os
 
-import wandb
 import torch
 import numpy as np
 
 from Exp.parser import parse_args
 from Misc.config import config
 from Misc.utils import list_of_dictionary_to_dictionary_of_lists
-from Exp.preparation import load_dataset, get_model, get_optimizer_scheduler, get_loss
+from Exp.preparation import load_dataset, get_model, get_optimizer_scheduler, get_loss, get_prediction_type
 from Exp.training_loop_functions import train, eval, step_scheduler
+from Misc.tracking import get_tracker
 
 def set_seed(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
     
-def track_epoch(epoch, metric_name, train_result, val_result, test_result, lr):
-    wandb.log({
+def track_epoch(tracker, epoch, metric_name, train_result, val_result, test_result, lr):
+    tracker.log({
         "Epoch": epoch,
         "Train/Loss": train_result["total_loss"],
         "Val/Loss": val_result["total_loss"],
@@ -41,13 +41,20 @@ def main(args):
     print(args)
     device = args.device
     use_tracking = args.use_tracking
+    dataset_name = args.dataset
     
     set_seed(args.seed)
     train_loader, val_loader, test_loader = load_dataset(args, config)
     num_classes, num_vertex_features = train_loader.dataset.num_classes, train_loader.dataset.num_node_features
+    prediction_type = get_prediction_type(args.dataset.lower())
     
-    if args.dataset.lower() == "zinc" or "ogb" in args.dataset.lower():
+    if ("qm9" in dataset_name.lower() and "_" in  dataset_name.lower()) or \
+       (args.dataset.lower() in ["zinc", "zinc_full"] or "ogb" in args.dataset.lower()) or \
+        (args.dataset.lower() == "pcqm-contact"):
         num_classes = 1
+        
+    
+
    
     try:
         num_tasks = train_loader.dataset.num_tasks
@@ -59,28 +66,31 @@ def main(args):
     print(f"#Tasks: {num_tasks}")
 
     model = get_model(args, num_classes, num_vertex_features, num_tasks)
+    print(model)
     nr_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model.to(device)
     optimizer, scheduler = get_optimizer_scheduler(model, args)
-    loss_dict = get_loss(args)
+    use_scheduler_with_early_stopping = args.scheduler == "ReduceLROnPlateau"
+    if use_scheduler_with_early_stopping:
+        print("Using a scheduler that supports early stopping")
+    
+    loss_dict = get_loss(dataset_name)
     loss_fct = loss_dict["loss"]
     eval_name = loss_dict["metric"]
     metric_method = loss_dict["metric_method"]
 
+    tracker = None
     if use_tracking:
-        os.environ["WANDB_SILENT"] = "true"
-        wandb.init(
-            config = args,
-            project = config.project)
+        tracker = get_tracker(config.tracker, args,  config.project)
 
     print("Begin training.\n")
     time_start = time.time()
     train_results, val_results, test_results = [], [], []
     for epoch in range(1, args.epochs + 1):
         print(f"Epoch {epoch}")
-        train_result = train(model, device, train_loader, optimizer, loss_fct, eval_name, use_tracking, metric_method=metric_method)
-        val_result = eval(model, device, val_loader, loss_fct, eval_name, metric_method=metric_method)
-        test_result = eval(model, device, test_loader, loss_fct, eval_name, metric_method=metric_method)
+        train_result = train(model, device, train_loader, optimizer, loss_fct, eval_name, tracker, metric_method=metric_method, prediction_type=prediction_type)
+        val_result = eval(model, device, val_loader, loss_fct, eval_name, metric_method=metric_method, prediction_type=prediction_type)
+        test_result = eval(model, device, test_loader, loss_fct, eval_name, metric_method=metric_method, prediction_type=prediction_type)
 
         train_results.append(train_result)
         val_results.append(val_result)
@@ -89,12 +99,12 @@ def main(args):
         print_progress(train_result['total_loss'], val_result['total_loss'], test_result['total_loss'], eval_name, val_result[eval_name], test_result[eval_name])
 
         if use_tracking:
-            track_epoch(epoch, eval_name, train_result, val_result, test_result, optimizer.param_groups[0]['lr'])
+            track_epoch(tracker, epoch, eval_name, train_result, val_result, test_result, optimizer.param_groups[0]['lr'])
 
-        step_scheduler(scheduler, args, val_result["total_loss"])
+        step_scheduler(scheduler, args.scheduler, val_result["total_loss"])
 
         # EXIT CONDITIONS
-        if optimizer.param_groups[0]['lr'] < args.min_lr:
+        if use_scheduler_with_early_stopping and optimizer.param_groups[0]['lr'] < args.scheduler_min_lr:
                 print("\nLR reached minimum: exiting.")
                 break
 
@@ -125,14 +135,14 @@ def main(args):
     print_progress(loss_train, loss_val, loss_test, eval_name, result_val, result_test)
 
     if use_tracking:
-        wandb.log({
+        tracker.log({
             "Final/Train/Loss": loss_train,
             "Final/Val/Loss": loss_val,
             f"Final/Val/{eval_name}": result_val,
             "Final/Test/Loss": loss_test,
             f"Final/Test/{eval_name}": result_test})
 
-        wandb.finish()
+        tracker.finish()
 
     return {
         "mode": mode,
