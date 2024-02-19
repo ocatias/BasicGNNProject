@@ -2,3 +2,4 @@ matplotlib
 ogb
 wandb
 networkx
+torchmetrics
