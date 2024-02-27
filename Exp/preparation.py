@@ -176,7 +176,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     if args.add_node_degree > 0:
         additional_features.append(150)
     if args.add_num_triangles > 0:
-        additional_features.append(150)
+        additional_features.append(1500)
     if len(additional_features) == 0:
         additional_features = None
 
