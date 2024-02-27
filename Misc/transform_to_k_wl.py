@@ -46,7 +46,7 @@ def k_wl_sequential_layers(n, k):
 
 def get_number_of_triangles_per_node(graph):
     g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
-    tri = nx.triangles(g).values()
+    tri = list(nx.triangles(g).values())
     return tri
 
 

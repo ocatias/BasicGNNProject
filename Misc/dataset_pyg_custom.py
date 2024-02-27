@@ -282,11 +282,11 @@ class PygGraphPropPredDatasetCustom(InMemoryDataset):
                     data_list.extend(uncolate(data_p, slices_p))
             else:
                 for i, d in enumerate(data_list):
-                    if i < 10:
+                    if i < 10 or 70 < i < 80:
                         print(i,d)
                 data_list = [self.pre_transform(data) for data in data_list]
         for i, d in enumerate(data_list):
-            if i < 10:
+            if i < 10 or 70 < i < 80:
                 print(i,d)
         data, slices = self.collate(data_list)
         print('Saving...')

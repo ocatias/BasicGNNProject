@@ -344,7 +344,7 @@ def find_eval_params(args, grid, split):
                 print('out of memory error')
                 continue
             else:
-                # raise e
+                raise e
 
                 if nr_prev_errors > allowed_nr_errors:
                     raise Exception("Too many training runs crashed.")

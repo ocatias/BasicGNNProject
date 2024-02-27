@@ -175,6 +175,8 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     additional_features = []
     if args.add_node_degree > 0:
         additional_features.append(150)
+    if args.add_num_triangles > 0:
+        additional_features.append(150)
     if len(additional_features) == 0:
         additional_features = None
 
@@ -202,7 +204,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
     elif args.dataset.lower() in ["csl", "ptc_mr", "ptc_fm", 'mutag', 'imdb-binary', 'imdb-multi', 'enzymes']:
         node_encoder = NodeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 300, 100, 100, 100, 100, 100, 100],
                                    uses_k_wl_transform=args.transform_k_wl,
-                                   k_wl_separate=bool(args.k_wl_separate_embedding))
+                                   k_wl_separate=bool(args.k_wl_separate_embedding), additional_features=additional_features)
         edge_encoder = EdgeEncoder(emb_dim=args.emb_dim, feature_dims=[300, 100, 100, 100],
                                    uses_k_wl_transform=not bool(args.k_wl_set_based) and args.transform_k_wl > 0,
                                    k_wl_separate=bool(args.k_wl_separate_embedding))
