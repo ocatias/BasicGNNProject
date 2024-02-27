@@ -6,16 +6,15 @@ from matplotlib import pyplot as plt
 from Misc.utils import edge_tensor_to_list
 
 colors_feat = ['white', 'red', 'orange', 'yellow', 'blue', 'green', 'grey', 'pink', 'magenta']
-colors_type = ['red', 'orange', 'yellow', 'blue', 'green', 'grey', 'pink', 'magenta']
+colors_type = [ 'orange',  'blue', 'pink', 'grey', 'green', 'magenta', 'yellow', 'orange',  'blue', 'pink', 'grey', 'green', 'magenta','yellow']
 cololrs_edges = ['orange', 'red', 'yellow', 'blue', 'green', 'grey', 'pink', 'purple', 'magenta', 'maroon']
 default_color = 'white'
 default_color_edge = 'black'
 
-max_value_color = 'magenta'
 
 
 def visualize(data, name, labels=None, colors=None, v_feat_dim=None, e_feat_dim=None, figsize=(30,30)):
-    G = nx.DiGraph(directed=True)
+    G = nx.Graph(directed=False)
     plt.clf()
     plt.figure(figsize=figsize, dpi=100)
     if labels is None:
@@ -48,7 +47,10 @@ def visualize(data, name, labels=None, colors=None, v_feat_dim=None, e_feat_dim=
     edges = G.edges()
     color_map_edges = [G[u][v]['color'] for u, v in edges]
 
-    nx.draw_kamada_kawai(G, node_color=color_map_vertices, edge_color=color_map_edges, with_labels=True,
-                         font_weight='bold', arrows=True, labels=labels)
+    cc= list(nx.connected_components(G))
+    if len(cc) > 0 and len(cc[0]) < len(labels):
+        labels = {k:v for k,v in labels.items() if k in cc[0]}
+    nx.draw(G, pos=nx.kamada_kawai_layout(G),node_color=color_map_vertices, edge_color=color_map_edges, with_labels=True,
+                         font_weight='bold', arrows=False, labels=labels, font_color='red')
     plt.savefig(f'../pictures/{name}.png')
     plt.close()

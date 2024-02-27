@@ -1,4 +1,5 @@
 import copy
+import os
 import pickle
 from collections import defaultdict
 from copy import deepcopy
@@ -401,6 +402,7 @@ class TransforToKWl(BaseTransform):
                 graph['iso_type' + ("" if local_modify else f"_{self.k}")], 1)
         if local_modify:
             graph.num_nodes = len(all_combinations)
+            graph['x'] = graph['iso_type' + ("" if local_modify else f"_{self.k}")]
 
         if len(new_edges[0]) > 0:
             new_edge_attr = stack(new_edge_attr)
@@ -651,22 +653,29 @@ class TransforToKWl(BaseTransform):
 
 
 if __name__ == '__main__':
-    with open('../debug/graph_20_02.pkl', 'rb') as file:
-        data = pickle.load(file)
-    transform = TransforToKWl(3, set_based=True, turbo=False, modify=False, compute_attributes=False)
+    # with open('../debug/graph_20_02.pkl', 'rb') as file:
+    #     data = pickle.load(file)
+    os.environ['DEVICE'] = '0'
+    transform = TransforToKWl(3, set_based=True, turbo=False, modify=True, compute_attributes=False, connected=True)
 
     from sknetwork.data import house
 
-    print(data)
-    # data = graph_from_adj(house())
-    visualize(data, 'transformed_before')  # , labels=[0, 1, 2, 3, 4], figsize=(3, 3))
-    transformed_data = transform(data)
+    print(house())
+    data = graph_from_adj(house())
+    visualize(data, 'transformed_before' , labels=[0, 1, 2, 3, 4], figsize=(3, 3))
+    transformed_data, mapping = transform.graph_to_k_wl_graph(data, return_mapping=True)
     print(transformed_data)
     print(transformed_data.x)
-    # print('unique iso type', unique(transformed_data.iso_type_3[:, 0]))
-    print(transformed_data.iso_type_3)
-    print(transformed_data.edge_attr)
-    print(transformed_data.edge_attr_3)
+    # # print('unique iso type', unique(transformed_data.iso_type_3[:, 0]))
+    # print(transformed_data.iso_type_3)
+    # print(transformed_data.edge_attr)
+    # print(transformed_data.edge_attr_3)
     # print(transformed_data.edge_attr)
     # pprint(list(zip(mapping, transformed_data.x)))
-    visualize(transformed_data, 'transformed_turbo')
+    print(data.x)
+    # labels = [','.join([str(i) for i in x]) for x in list(product([0, 1, 2, 3, 4], repeat=3))]
+    labels = mapping
+    print(labels)
+    print(data.edge_index)
+    visualize(transformed_data, 'transformed_turbo', figsize=(7,7), labels=labels, v_feat_dim=0)
+
