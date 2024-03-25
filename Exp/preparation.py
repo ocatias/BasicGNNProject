@@ -165,7 +165,7 @@ def get_model(args, num_classes, num_vertex_features, num_tasks):
                     args.emb_dim, 
                     gnn_type = model, 
                     drop_ratio = args.drop_out, 
-                    JK = "last", 
+                    JK = args.JK, 
                     graph_pooling = args.pooling, 
                     edge_encoder=edge_encoder, 
                     node_encoder=node_encoder, 

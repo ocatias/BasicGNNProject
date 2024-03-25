@@ -1,5 +1,6 @@
 import torch
 from torch_geometric.nn import MessagePassing, GINEConv, GATv2Conv
+from torch_geometric.nn.models import JumpingKnowledge
 from torch_geometric.utils import degree
 from torch.nn import Linear, ReLU, ModuleList, Sequential, BatchNorm1d, Dropout
 import torch.nn.functional as F
@@ -22,7 +23,7 @@ def get_mp_layer(emb_dim, activation, mp_type):
 class MPNN(torch.nn.Module):
 
     def __init__(self, num_classes, num_tasks, num_layer, emb_dim, 
-                    gnn_type, residual, drop_ratio , JK, graph_pooling,
+                    gnn_type, residual, drop_ratio, JK, graph_pooling,
                     node_encoder, edge_encoder, num_mlp_layers, activation, prediction_type):
         """
         Message passing graph neural network.
@@ -34,7 +35,6 @@ class MPNN(torch.nn.Module):
         self.num_layer = num_layer
         self.emb_dim = emb_dim
         self.residual = residual
-        self.JK = JK
         self.node_encoder = node_encoder
         self.edge_encoder = edge_encoder
         self.activation = get_activation(activation)
@@ -52,11 +52,21 @@ class MPNN(torch.nn.Module):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
             self.mp_layers.append(get_mp_layer(emb_dim, self.activation, gnn_type))
             
+        # Jumping Knowledge
+        self.JK_type = JK
+        if self.JK_type == "concat":
+            self.JK = JumpingKnowledge("cat")
+        elif self.JK_type == "mean":
+            self.JK = lambda ls: torch.squeeze(torch.mean(torch.stack(ls), 0, True), 0)
+        elif self.JK_type == "last":
+            self.JK = lambda ls: ls[-1]
+
+        # Prediction Layer
         if prediction_type in [PredictionType.NODE_PREDICTION, PredictionType.GRAPH_PREDICTION]:
             print(f"Graph pooling function: {graph_pooling}")
             self.pool = get_pooling_fct(graph_pooling)
             self.mlp = get_mlp(num_layers=num_mlp_layers, 
-                            in_dim=self.emb_dim, 
+                            in_dim=self.emb_dim if self.JK_type != "concat" else self.emb_dim*(self.num_layer+1), 
                             out_dim=self.num_classes*self.num_tasks, 
                             hidden_dim=self.emb_dim // 2, 
                             activation=self.activation, 
@@ -82,9 +92,7 @@ class MPNN(torch.nn.Module):
 
             h_list.append(h)
         
-        # Todo: jumping knowledge
-        h_node = h_list[-1]
-        
+        h_node = self.JK(h_list)
        
         if self.prediction_type == PredictionType.NODE_EMBEDDING:
             return h_node

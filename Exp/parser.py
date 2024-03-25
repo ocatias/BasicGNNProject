@@ -65,7 +65,9 @@ def add_model_arguments(parser, model):
         # parser.add_argument('--virtual_node', type=int, default=0,
         #                     help='Set 1 to use a virtual node, that is a node that is adjacent to every node in the graph (default: 0)')
         parser.add_argument('--residual', type=int, default=0,
-                            help='Set 1 for a residual connection in MPNNs (default: 0)')
+                            help='Set 1 for a residual last in MPNNs (default: 0)')
+        parser.add_argument('--JK', type=str, default="relu",
+                        help='Jumping Knowledge (default: last; other options: mean, concat)')
         
     elif model == "MLP":
         parser.add_argument('--num_n_layers', type=int, default=5,
