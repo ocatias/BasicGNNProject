@@ -66,7 +66,7 @@ def add_model_arguments(parser, model):
         #                     help='Set 1 to use a virtual node, that is a node that is adjacent to every node in the graph (default: 0)')
         parser.add_argument('--residual', type=int, default=0,
                             help='Set 1 for a residual last in MPNNs (default: 0)')
-        parser.add_argument('--JK', type=str, default="relu",
+        parser.add_argument('--JK', type=str, default="last",
                         help='Jumping Knowledge (default: last; other options: mean, concat)')
         
     elif model == "MLP":
