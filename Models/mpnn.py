@@ -83,12 +83,12 @@ class MPNN(torch.nn.Module):
             h = self.batch_norms[layer](h)
             h = self.dropout(h)
 
+            if self.residual:
+                h += h_list[layer]
+            
             # No ReLU for last layer
             if layer != self.num_layer - 1:
                 h = self.activation(h)
-
-            if self.residual:
-                h += h_list[layer]
 
             h_list.append(h)
         
