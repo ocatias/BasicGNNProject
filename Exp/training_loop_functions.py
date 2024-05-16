@@ -48,7 +48,7 @@ def compute_loss_predictions(batch, model, metric, device, loss_fn, tracking_dic
     tracking_dict["y_preds"] += predictions.cpu()
     tracking_dict["y_true"] += ground_truth.cpu()
     tracking_dict["batch_losses"].append(loss.item())
-    tracking_dict["total_loss"] += loss.item()*nr_predictions
+    tracking_dict["total_loss"] += loss.item()
     return loss
 
 def compute_final_tracking_dict(tracking_dict, output_dict, loader, metric, metric_method, train=False):
